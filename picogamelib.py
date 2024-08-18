@@ -18,8 +18,9 @@
 ・ディレクター
     シーンをスタックで管理.
 """
-__version__ = "0.1.0"
-__author__ = "Choi Gyun 2022"
+
+__version__ = "0.2.0"
+__author__ = "Choi Gyun 2024"
 
 import io
 import json
@@ -27,14 +28,14 @@ import utime
 import framebuf as buf
 import micropython
 import gc
-
-#import _thread
+import _thread
 from micropython import const
-
 import picolcd114 as lcd114
 
 
-# 標準イベント
+# イベント
+
+# 標準イベント イベント名が関数名になる
 EV_ENTER_FRAME = const("ev_enter_frame")
 """毎フレーム"""
 EV_ANIME_ENTER_FRAME = const("ev_anime_enter_frame")
@@ -55,13 +56,13 @@ image_buffers = []
 
 bg_color = 0x0000
 """BGカラー"""
-trans_color = 0x618
+trans_color = 0x0000
 """透過色"""
 
 lcd = lcd114.LCD()
 """BGバッファ 全シーン共有"""
 
-#lock = _thread.allocate_lock()
+lock = _thread.allocate_lock()
 """共有ロック"""
 
 
@@ -137,6 +138,7 @@ class Sprite:
         self.sprite_list = []  # 子スプライトのリスト
         self.visible = False
         self.owner = None
+        self.thread_vals = [32]  # thread_action に渡す変数
 
     def init_params(self, parent, chr_no, name, x, y, z, w, h):
         """パラメータを初期化
@@ -169,7 +171,7 @@ class Sprite:
 
     def init_parent(self, parent=None):
         """親スプライトを初期化
-        
+
         Params:
             parent (Sprite): 親スプライト
         """
@@ -226,6 +228,9 @@ class Sprite:
             if self.frame_wait == 0:
                 self.frame_wait = self.frame_wait_def
                 self.frame_index = (self.frame_index + 1) % self.frame_max
+
+    def thread_action(self):
+        """別スレッドで実行されるアクション"""
 
     def hit_test(self, sp):
         """当たり判定
@@ -547,11 +552,11 @@ class Stage(Sprite):
         event (EventManager): イベント管理
     """
 
-    def __init__(self, scene, event, name, x, y, z, w, h):
+    def __init__(self, scene, event, name, x, y, z, w, h, bg_color):
         super().__init__()
-        self.init_params(scene, event, name, x, y, z, w, h)
+        self.init_params(scene, event, name, x, y, z, w, h, bg_color)
 
-    def init_params(self, scene, event, name, x, y, z, w, h):
+    def init_params(self, scene, event, name, x, y, z, w, h, bg_color):
         """パラメータをセット
 
         Params:
@@ -563,6 +568,7 @@ class Stage(Sprite):
             z (int): Z座標 小さい順に描画
             w (int): 幅
             h (int): 高
+            bg_color (int): BGカラー（透過色を指定した場合は塗りつぶし無し）
         """
         super().init_params(None, 0, name, x, y, z, w, h)
         # イベント
@@ -571,6 +577,9 @@ class Stage(Sprite):
         self.stage = self
         # シーン
         self.scene = scene
+        # BGをクリアするか
+        self.bg_color = bg_color
+
         return self
 
     def action(self):
@@ -579,12 +588,20 @@ class Stage(Sprite):
             for s in self.sprite_list:
                 s.action()
 
+    def thread_action(self):
+        """別スレッド用のアクション"""
+        if self.visible:
+            for s in self.sprite_list:
+                s.thread_action()
+
     def show(self):
         """ステージを更新
         ・スプライトをバッファに描画
         """
-        # BGバッファ クリア
-        lcd.fill(bg_color)
+        # BGバッファ 塗りつぶし
+        if self.bg_color != trans_color:
+            lcd.fill(self.bg_color)
+
         # 子スプライトをバッファに描画
         for s in self.sprite_list:
             s.show(lcd, self.x, self.y)
@@ -674,7 +691,7 @@ class EventManager:
 
     def __init__(self):
         # イベントキュー
-        self.queue = []  # deque を使いたい
+        self.queue = []
         # イベントリスナー
         self.listners = []
 
@@ -815,7 +832,7 @@ class Scene:
 
     Params:
         name (str): シーン名
-        stage (Stage): ステージ（スプライトのルート）
+        stage (Stage): ステージ（スプライトのルート）ekonnte
         event (EventManageer): イベント管理
         key (InputKey): キー管理
 
@@ -880,14 +897,22 @@ class Scene:
 
         # バッファに描画
         # 排他処理
-        #lock.acquire()
+        # lock.acquire()
         self.stage.show()
-        #lock.release()
+        # lock.release()
+
+        # LCDに転送
         lcd.show()
 
         # enter_frame イベントは毎フレーム発生
         self.event.post([EV_ENTER_FRAME, EV_PRIORITY_MID, 0, self, self.key])
         self.event.post([EV_ANIME_ENTER_FRAME, EV_PRIORITY_MID, 0, self, self.key])
+
+    def thread_action(self):
+        """別スレッド用アクション"""
+
+        if self.active:
+            self.stage.thread_action()
 
     def leave(self):
         """終了処理"""
@@ -973,14 +998,3 @@ class Director:
                 return s
 
         return None
-
-
-#def thread_send_buf_to_lcd():
-#    """LCDにバッファを転送するスレッド
-#
-#    CORE1 が担当.
-#    """
-#    while True:
-#        lock.acquire()
-#        lcd.show()
-#        lock.release()

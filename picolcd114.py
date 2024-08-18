@@ -43,7 +43,7 @@ class LCD(framebuf.FrameBuffer):
         # ボーレートは適当
         self.spi = SPI(
             1,
-            100_000_000,
+            80_000_000,
             polarity=0,
             phase=0,
             sck=Pin(_SCK),
