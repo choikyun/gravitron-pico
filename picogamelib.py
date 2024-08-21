@@ -28,7 +28,6 @@ import utime
 import framebuf as buf
 import micropython
 import gc
-import _thread
 from micropython import const
 import picolcd114 as lcd114
 
@@ -61,9 +60,6 @@ trans_color = 0x0000
 
 lcd = lcd114.LCD()
 """BGバッファ 全シーン共有"""
-
-lock = _thread.allocate_lock()
-"""共有ロック"""
 
 
 def load_status(filename):
@@ -138,7 +134,6 @@ class Sprite:
         self.sprite_list = []  # 子スプライトのリスト
         self.visible = False
         self.owner = None
-        self.thread_vals = [32]  # thread_action に渡す変数
 
     def init_params(self, parent, chr_no, name, x, y, z, w, h):
         """パラメータを初期化
@@ -228,9 +223,6 @@ class Sprite:
             if self.frame_wait == 0:
                 self.frame_wait = self.frame_wait_def
                 self.frame_index = (self.frame_index + 1) % self.frame_max
-
-    def thread_action(self):
-        """別スレッドで実行されるアクション"""
 
     def hit_test(self, sp):
         """当たり判定
@@ -588,12 +580,6 @@ class Stage(Sprite):
             for s in self.sprite_list:
                 s.action()
 
-    def thread_action(self):
-        """別スレッド用のアクション"""
-        if self.visible:
-            for s in self.sprite_list:
-                s.thread_action()
-
     def show(self):
         """ステージを更新
         ・スプライトをバッファに描画
@@ -896,10 +882,7 @@ class Scene:
         self.stage.action()
 
         # バッファに描画
-        # 排他処理
-        # lock.acquire()
         self.stage.show()
-        # lock.release()
 
         # LCDに転送
         lcd.show()
@@ -907,12 +890,6 @@ class Scene:
         # enter_frame イベントは毎フレーム発生
         self.event.post([EV_ENTER_FRAME, EV_PRIORITY_MID, 0, self, self.key])
         self.event.post([EV_ANIME_ENTER_FRAME, EV_PRIORITY_MID, 0, self, self.key])
-
-    def thread_action(self):
-        """別スレッド用アクション"""
-
-        if self.active:
-            self.stage.thread_action()
 
     def leave(self):
         """終了処理"""
