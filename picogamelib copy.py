@@ -55,9 +55,9 @@ EV_PRIORITY_LOW = const(100)
 DEFAULT_FPS = const(30)
 """デフォルトFPS"""
 
-BG_COLOR = 0x0000
+bg_color = 0x0000
 """BGカラー"""
-ALPHA_COLOR = 0xFBB5
+trans_color = 0xFBB5
 """透過色"""
 
 lcd = lcd114.LCD()
@@ -123,6 +123,9 @@ class Sprite:
         active (bool): 表示するか
         sprite_list (list): 子スプライトのリスト
         draw_order: 描画順 0: 子が先 1: 親が先
+        stage (Stage): ステージへのショートカット
+        scene (Scene): シーンへのショートカット
+        event (EventManager): イベントマネージャーのショートカット
         frame_max (int): アニメ用フレーム数
         frame_index (int): アニメ用フレームのインデックス
         frame_wait (int): アニメ用フレーム切り替えウェイト
@@ -133,12 +136,13 @@ class Sprite:
     def __init__(self):
         self.sprite_list = []  # 子スプライトのリスト
         self.active = False
-        self.owner = self.parent = self.stage = self.event = self.scene = None
+        self.owner = self.parent = self.stage = self.scene = self.event = None
 
-    def init_params(self, chr_no=0, name="no_name", x=0, y=0, z=0, w=0, h=0):
+    def init_params(self, parent, chr_no, name, x, y, z, w, h):
         """パラメータを初期化
 
         Params:
+            parent (int): 親オブジェクト
             chr_no (int): 画像No image_buffers に対応した番号
             name (str or int): キャラクタ識別の名前
             x (int): X座標（親からの相対座標）
@@ -159,10 +163,18 @@ class Sprite:
         self.h = h
         self.draw_order = 1  # 親を先に描画
 
-        self.init_frame_params()  # フレームアニメ
+        self.parent = parent
+        if self.parent is not None:
+            self.scene = parent.scene # シーン
+            self.stage = parent.Stage # ステージ
+            self.event = parent.event # イベント
+            # 親スプライトに追加
+            parent.add_sprite(parent)
+
+        self.init_frame_param()  # フレームアニメ
         return self  # チェーンできるように
 
-    def init_frame_params(self, max=0, wait=4):
+    def init_frame_param(self, max=1, wait=4):
         """フレームアニメ用パラメータを初期化
 
         Params:
@@ -173,18 +185,6 @@ class Sprite:
         self.frame_wait = wait
         self.frame_wait_def = wait
         self.frame_index = 0
-        return self
-
-    def init_shortcuts(self):
-        """ショートカットを設定"""
-
-        self.stage = self.parent.stage
-        self.scene = self.parent.stage.scene
-        self.event = self.parent.stage.event
-
-        #for sp in self.sprite_list:
-        #    sp.init_shortcuts()
-
 
     def show(self, frame_buffer, images, x, y):
         """フレームバッファに描画
@@ -205,12 +205,12 @@ class Sprite:
                     sp.show(frame_buffer, images, x, y)
 
                 frame_buffer.blit(
-                    images[self.chr_no + self.frame_index], x, y, ALPHA_COLOR
+                    images[self.chr_no + self.frame_index], x, y, trans_color
                 )
             else:
                 # 親を先に描画
                 frame_buffer.blit(
-                    images[self.chr_no + self.frame_index], x, y, ALPHA_COLOR
+                    images[self.chr_no + self.frame_index], x, y, trans_color
                 )
                 for sp in self.sprite_list:
                     sp.show(frame_buffer, images, x, y)
@@ -224,11 +224,10 @@ class Sprite:
                 sp.action()
 
             # アニメ用のフレームカウント
-            if self.frame_max > 0:
-                self.frame_wait -= 1
-                if self.frame_wait == 0:
-                    self.frame_wait = self.frame_wait_def
-                    self.frame_index = (self.frame_index + 1) % self.frame_max
+            self.frame_wait -= 1
+            if self.frame_wait == 0:
+                self.frame_wait = self.frame_wait_def
+                self.frame_index = (self.frame_index + 1) % self.frame_max
 
     def hit_test(self, sp):
         """当たり判定
@@ -240,10 +239,10 @@ class Sprite:
             bool: 当たっているか
         """
         # 絶対座標を取得
-        px = self.abs_x()
-        py = self.abs_y()
-        sx = sp.abs_x()
-        sy = sp.abs_y()
+        px = self.parent_x()
+        py = self.parent_y()
+        sx = sp.parent_x()
+        sy = sp.parent_y()
 
         if (
             px <= sx + sp.w
@@ -255,7 +254,7 @@ class Sprite:
         else:
             return False
 
-    def add_child(self, sp):
+    def add_sprite(self, sp):
         """スプライト追加
         z順になるように
         すでにあったら追加しない
@@ -269,8 +268,6 @@ class Sprite:
 
         if self.sprite_list == 0:
             self.sprite_list.append(sp)
-            sp.parent = self
-            sp.init_shortcuts()
             return sp
 
         # z昇順・新規は後ろに追加
@@ -278,17 +275,13 @@ class Sprite:
             if sp.z < s.z:
                 # 挿入
                 self.sprite_list.insert(i, sp)
-                sp.parent = self
-                sp.init_shortcuts()
                 return sp
 
         self.sprite_list.append(sp)
-        sp.parent = self
-        sp.init_shortcuts()
 
         return sp
 
-    def remove_child(self, sp):
+    def remove_sprite(self, sp):
         """スプライト削除
         親から切り離す
 
@@ -298,34 +291,27 @@ class Sprite:
 
         for i in range(len(self.sprite_list) - 1, -1, -1):
             if self.sprite_list[i] is sp:
-                sp.parent = sp.stage = sp.scene = sp.event = None
+                sp.owner = sp.parent = sp.stage = sp.scene = sp.event = None
                 del self.sprite_list[i]
                 return self
 
-    def remove_children(self, name):
+    def remove_all_sprite(self, name):
         """名前が同じスプライトを全て削除
 
         Params: name(str): スプライト名
         """
         for i in range(len(self.splite_list) - 1, -1, -1):
             if self.sprite_list[i].name == name:
-                sp.parent = sp.stage = sp.scene = sp.event = None
+                sp.owner = sp.parent = sp.stage = sp.scene = sp.event = None
                 del self.sprite_list[i]
                 return self
-
-    def ready(self):
-        """準備完了
-        オブジェクト生成時一度だけ実行
-        """
-        for sp in self.sprite_list:
-            sp.ready()
 
     def enter(self):
         """入場
         初期化処理
         """
-        #for sp in self.sprite_list:
-        #    sp.enter()
+        for sp in self.sprite_list:
+            sp.enter()
 
         self.active = True
         return self  # チェーンできるように
@@ -347,31 +333,21 @@ class Sprite:
         if self.owner is SpritePool:
             self.owner.pool.return_instance(self)
             # 親から削除
-            self.parent.remove_child(self)
-
+            self.parent.remove_sprite(self)
+                    
         return self  # チェーンできるように
 
-    def abs_coord(self):
-        """絶対座標 XY"""
-        x = self.x
-        y = self.y
-        sp = self
-        while True:
-            if sp.parent is None:
-                break
-            x += self.parent.x
-            y += self.parent.y
-            sp = sp.parent
-        
-        return (x, y)
-        
-    def root(self):
-        """ルートオブジェクトの取得"""
-        sp = self
-        while sp.parent != None:
-            sp = sp.parent
+    def abs_x(self):
+        """絶対座標 X"""
+        if self.parent == None:
+            return self.x
+        return self.x + self.abs_x()
 
-        return sp
+    def abs_y(self):
+        """絶対座標 Y"""
+        if self.parent == None:
+            return self.y
+        return self.y + self.abs_y()
 
 
 class SpriteContainer(Sprite):
@@ -379,7 +355,7 @@ class SpriteContainer(Sprite):
     子スプライトのみ描画する入れ物
     """
 
-    def init_params(self, name="no_name", x=0, y=0, z=0):
+    def init_params(self, parent, name, x, y, z):
         """パラメータを初期化
 
         Params:
@@ -389,7 +365,7 @@ class SpriteContainer(Sprite):
             y (int): Y座標（親からの相対座標）
             z (int): Z座標 小さい順に描画
         """
-        super().init_params(0, name, x, y, z, 0, 0)
+        super().init_params(parent, 0, name, x, y, z, 0, 0)
 
     def show(self, frame_buffer, images, x, y):
         """子スプライトのみフレームバッファに描画
@@ -418,9 +394,9 @@ class BitmapSprite(Sprite):
         show_once(bool): 1回のみの描画
     """
 
-    def __init__(self, bmp_no=0, name="no_name", x=0, y=0, z=0, w=0, h=0, show_once=False):
+    def __init__(self, parent, bmp_no, name, x, y, z, w, h, show_once):
         super().__init__()
-        self.init_params(bmp_no, name, x, y, z, w, h)
+        self.init_params(paernt, bmp_no, name, x, y, z, w, h)
         self.show_once = show_once
         if show_once:
             self.show_count = 1
@@ -493,9 +469,9 @@ class ShapeSprite(SpriteContainer):
         shape (list): 図形データ 0:mode(LINE|HLINE|VLINE|RECT|RECTF) 1:x1 2:y1 3:x2 4:y2 5:color
     """
 
-    def __init__(self, shape, name="no_name", z=0):
+    def __init__(self, parent, shape, name, z):
         super().__init__()
-        self.init_params(name, shape[2], shape[3], z)
+        self.init_params(parent, name, shape[2], shape[3], z)
         self.shape = shape
 
     def show(self, frame_buffer, images, x, y):
@@ -536,7 +512,8 @@ class SpritePool:
         pool (list): スプライトのリスト
     """
 
-    def __init__(self, clz, size=32):
+    def __init__(self, parent, clz, size=32):
+        self.parent = parent
         self.size = size
         self.clz = clz
         self.pool = []
@@ -544,6 +521,10 @@ class SpritePool:
         for _ in range(size):
             sp = clz()
             sp.owner = self
+            sp.parent = parent
+            sp.stage = parent.stage
+            sp.scene = parent.scene
+            sp.event = parent.event
             self.pool.append(sp)
 
     def get_instance(self):
@@ -551,6 +532,10 @@ class SpritePool:
         if len(self.pool) == 0:
             o = self.clz()  # プールが空の時は新規作成
             o.owner = self
+            sp.parent = self.parent
+            sp.stage = self.parent.stage
+            sp.scene = self.parent.scene
+            sp.event = self.parent.event            
             return o
         else:
             return self.pool.pop()
@@ -573,34 +558,35 @@ class Stage(SpriteContainer):
         scene (Scene): シーン
     """
 
-    def __init__(self, name="no_name", x=0, y=0, bg_color=BG_COLOR):
+    def __init__(self, scene, name, x, y, bg_color):
         super().__init__()
-        self.init_params(name, x, y, bg_color)
+        self.init_params(scene, name, x, y, bg_color)
 
         # ステージのみで利用するリソース
         # 画像, その他
         self.resources = {"images": [], "misc": []}
 
-    def init_params(self, name, x, y, bg_color):
+    def init_params(self, scene, name, x, y, bg_color):
         """パラメータをセット
 
         Params:
+            scene (Scene): シーン
             name (str or int): キャラクタ識別の名前
             x (int): X座標（親からの相対座標）
             y (int): Y座標（親からの相対座標）
             bg_color (int): BGカラー（透過色を指定した場合は塗りつぶし無し）
         """
-        super().init_params(name, x, y, 0)
+        super().init_params(None, name, x, y, 0)
+        # イベント
+        self.event = scene.event
         # ステージ 自分自身
         self.stage = self
-        # BGをクリアするか
-        self.bg_color = bg_color
+        # シーン
+        self.scene = scene
         # 親はいない
         self.parent = None
-
-        self.scene = None
-        self.event = None
-
+        # BGをクリアするか
+        self.bg_color = bg_color
         return self
 
     def action(self):
@@ -615,7 +601,7 @@ class Stage(SpriteContainer):
         """
         if self.active:
             # BGバッファ 塗りつぶし
-            if self.bg_color != ALPHA_COLOR:
+            if self.bg_color != trans_color:
                 lcd.fill(self.bg_color)
 
             # 子スプライトをバッファに描画
@@ -652,7 +638,7 @@ class Stage(SpriteContainer):
 
         f.close()
 
-        super().enter()
+        self.active = True
 
     def leave(self):
         """リソースの破棄"""
@@ -664,9 +650,16 @@ class Stage(SpriteContainer):
         self.resources["images"].clear()
         self.resources["misc"].clear()
         gc.collect()  # GC実行したほうがいい？
-            
 
-class Animator:
+    def add_sprite(self, sp):
+        """スプライトの追加
+        ステージ（ルート）に追加する場合はショートカットを設定
+        """
+        super().add_sprite(sp)
+        sp.register_alias()
+
+
+class Anime:
     """アニメーション
     数値変化のアニメーション
     スプライトのフレームアニメとは別
@@ -684,9 +677,8 @@ class Animator:
         value (int): アニメーションの値
     """
 
-    def __init__(self, name="no_name", event=None, ease_func=None):
+    def __init__(self, name, ease_func):
         self.name = name
-        self.event = event
         self.func = ease_func
         self.is_playing = False
         self.is_paused = False
@@ -696,13 +688,20 @@ class Animator:
         self.total_frame = 0
         self.value = 0
 
-    def attach(self):
+        self.event = None
+        self.parent = None
+
+    def attach(self, sp):
         """アニメーションを使用可能に"""
+        self.parent = sp
+        self.event = sp.event
         self.event.add_listener([EV_ANIME_ENTER_FRAME, self, True])
 
     def detach(self):
         """使用できないように"""
         self.event.remove_all_listener(self)
+        self.parent = None
+        self.event = None
 
     def play(self):
         """開始"""
@@ -908,7 +907,7 @@ class Scene:
         active (bool): 現在シーンがアクティブ（フレーム処理中）か
     """
 
-    def __init__(self, name="no_name", key=None):
+    def __init__(self, name, key):
         self.name = name
         self.event = EventManager()
         self.stage = None  # 大抵は継承してカスタマイズするので
@@ -921,13 +920,6 @@ class Scene:
         self.active = False  # 現在シーンがアクティブか
         self.frame_count = 0  # 経過フレーム
         self.director = None
-
-    def set_stage(self, stage):
-        """ステージ登録"""
-        self.stage = stage
-        self.stage.scene = self
-        self.stage.event = self.event
-        self.stage.ready()
 
     def enter(self):
         """シーン開始時実行"""

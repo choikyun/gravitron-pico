@@ -5,7 +5,6 @@ __author__ = "Choi Gyun 2024"
 
 import _thread
 import random
-import utime
 import gc
 import machine
 
@@ -71,7 +70,6 @@ _COL_INDEX_DAMAGE = const(8)  # ダメージ
 _COL_INDEX_RECOVERY = const(11)
 _COL_INDEX_ACC = const(10)  # 加速
 _COL_INDEX_CHECK = const(15)  # チェックポイント
-_COL_INDEX_LAP = const(14)  # ラップ更新
 
 # 565
 _COL_BG = const(0)  # BGカラー
@@ -83,10 +81,7 @@ _COL_POWER_2 = const(0xFF64)
 _COL_POWER_3 = const(0xF809)
 _COL_POWER_OFF = const(0x042A)
 _COL_OUT = const(0x194A)  # コース外
-_COL_ALPHA = const(0x0726)  # スプライト透過色
-
-_GAME_READY = const(0)  # スタート前
-_GAME_PLAY = const(1)  # ゲーム中
+_COL_TRANS = const(0x0726)  # スプライト透過色
 
 ### ゲームバランス調整
 
@@ -140,20 +135,12 @@ _POWER_H = const(4)
 _MINIMAP_INTERVAL = const(5)
 
 # ラップ
-_LAP_X = const(80)
-_LAP_Y = const(8)
 _LAP_W = const(32)
 _LAP_H = const(16)
 
-_TIME_X = const(70)
-_TIME_Y = const(0)
-_TIME_W = const(40)
-_TIME_H = const(16)
-
-_LAP_NUM_X = const(34)
-_LAP_NUM_Y = const(0)
-_REC_NUM_X = const(70)
-_REC_NUM_Y = const(18)
+# スコア
+_SCORE_DIGIT = const(6)
+_LINE_DIGIT = const(4)
 
 # メッセージ
 _READY_DURATION = const(30 * 2)
@@ -163,15 +150,8 @@ _READY_INTERVAL = const(6)
 _OBJ_W = const(32)
 _OBJ_H = const(32)
 
-# 爆発
 _BOMB_W = const(32)
 _BOMB_H = const(32)
-
-# 数字
-_LAP_NUM_W = const(28)
-_LAP_NUM_H = const(28)
-_REC_NUM_W = const(12)
-_REC_NUM_H = const(12)
 
 ### キャラクタ
 # メイン
@@ -180,19 +160,28 @@ _CHR_SHIP_L = const(1)
 _CHR_SHIP_R = const(2)
 _CHR_BOMB = const(3)  # ..6
 _CHR_BURST = const(7)
-_CHR_NUM = const(8)  # ..17
-_CHR_LAPNUM = const(18)  # ..20
-_CHR_LAP = const(22)
-_CHR_READY = const(23)
-_CHR_TIME = const(24)
 
 # タイトル
 _CHR_TITLE = const(0)
 _CHR_CREDIT = const(1)
 
+_BMP_NUM = const(0)
+_BMP_LAP = const(10)
+_BMP_LAP_NUM = const(11)
+
 # ポーズ
+_SCORE_W = const(84)
+_SCORE_H = const(20)
+_HI_W = const(28)
+_HI_H = const(20)
+_LINES_W = const(76)
+_LINES_H = const(20)
 _INFO_BRIGHT_W = const(44)
 _INFO_BRIGHT_H = const(24)
+
+# 数字
+_NUM_W = const(16)
+_NUM_H = const(16)
 
 # ゲームオーバー
 _OVER_W = const(152)
@@ -217,7 +206,7 @@ _MES_Z = const(1000)
 _EV_UPDATE_POWER = const("ev_update_power")  # パワー更新
 _EV_INIT_MINIMAP = const("ev_init_minimap")  # ミニマップ初期化
 _EV_UPDATE_MINIMAP = const("ev_update_minimap")  # ミニマップ更新
-_EV_RECORD_LAP = const("ev_record_lap")  # ラップ更新
+_EV_CRASH = const("ev_crash")  # クラッシュ
 
 # セーブデータ
 _FILENAME = const("gv100.json")
@@ -337,7 +326,7 @@ def thread_loop(data, lock):
 def thread_draw_sprite(cmd):
     """スプライト描画"""
 
-    cmd[4].blit(cmd[3], cmd[1], cmd[2], _COL_ALPHA)
+    cmd[4].blit(cmd[3], cmd[1], cmd[2], _COL_TRANS)
 
 
 @micropython.native
@@ -422,7 +411,7 @@ class TitleScene(gl.Scene):
         super().__init__(name, key)
 
         # ステージ
-        self.set_stage(TitleStage())
+        self.stage = TitleStage(self, "title", 0, 0, gl.bg_color)
 
     def action(self):
         super().action()
@@ -441,7 +430,7 @@ class MainScene(gl.Scene):
         super().__init__(name, key)
 
         # ステージ（塗りつぶし無し）
-        self.set_stage(ThreadStage())
+        self.stage = ThreadStage(self, "main", 0, 0, gl.trans_color)
 
     def enter(self):
         """各種初期化処理"""
@@ -462,16 +451,11 @@ class MainScene(gl.Scene):
 class TitleStage(gl.Stage):
     """タイトル画面のステージ"""
 
-    def __init__(self):
-        super().__init__("title", 0, 0, gl.BG_COLOR)
-
-    def ready(self):
-        """初回実行"""
+    def __init__(self, scene, name, x, y, bg_color):
+        super().__init__(scene, name, x, y, bg_color)
 
         # スプライト作成 この時点では画像リソースは無い
-        self.title = Title()
-        self.add_child(self.title)
-        super().ready()
+        self.title = Title(self, _CHR_TITLE, "title", 0, 6, _MES_Z, _TITLE_W, _TITLE_H)
 
     def enter(self):
         """初期化"""
@@ -479,6 +463,7 @@ class TitleStage(gl.Stage):
         # バッファクリア
         gl.lcd.fill(_COL_BG)
         super().enter()
+        # 有効化
         self.title.enter()
 
 
@@ -489,31 +474,23 @@ class ThreadStage(gl.Stage):
     lock = _thread.allocate_lock()  # 共有ロック
     thread_data = [()]  # スレッドに渡すデータ
 
-    def __init__(self):
-        super().__init__("main", 0, 0, gl.ALPHA_COLOR)
+    def __init__(self, scene, name, x, y, bg_color):
+        super().__init__(scene, name, x, y, bg_color)
 
         # 描画スレッドに投げるキュー
         self.stage_queue = []
 
-    def ready(self):
-        """初回実行"""
-
-        self.status = _GAME_READY  # ゲーム開始前
-        self.event.add_listener([gl.EV_ENTER_FRAME, self, True])
-
         ## スプライト この時点では画像リソースが無い（画像リソースの無いスプライトもある）
-        self.ship = Ship()  # 自機
-        self.add_child(self.ship)
-        self.power = Power()  # パワー
-        self.add_child(self.power)
-        self.map = Minimap()  # ミニマップ
-        self.add_child(self.map)
-        self.lap = Lap()  # ラップ
-        self.add_child(self.lap)
-        self.view = View()  # 疑似3Dビュー
-        self.add_child(self.view)
-
-        super().ready()
+        # 自機
+        self.ship = Ship()
+        # パワー
+        self.power = Power("power", 0, 0, _POWER_Z)
+        # ミニマップ
+        self.map = Minimap("map", 4, 7, _MAP_Z)
+        # ラップ
+        # self.lap = Lap(1, "lap", 120, 9, _MAP_Z)
+        # ビュー
+        self.view = View(0, "view", 0, 0, _VIEW_Z, _VIEW_W, _VIEW_H)
 
     def enter(self):
         """初期化"""
@@ -523,12 +500,9 @@ class ThreadStage(gl.Stage):
         super().enter()
 
         self.ship.enter()  # スプライト有効化
+        self.power.enter()
+        self.map.enter()
         self.view.enter()
-
-        # 開始前のデモ
-        self.dir = self.view.dir
-        self.view.dir = (self.view.dir - 64) % _MAX_RAD  # カメラ初期値
-        self.ship.y += 64
 
         # 描画スレッド開始
         _thread.start_new_thread(
@@ -567,17 +541,6 @@ class ThreadStage(gl.Stage):
         # スプライト無効化
         super().leave()
 
-    def ev_enter_frame(self, type, sender, option):
-        """ゲーム開始前のデモ？"""
-        self.view.dir = (self.view.dir + 2) % _MAX_RAD  # カメラ回り込む
-        self.ship.y -= 2
-        if self.view.dir == self.dir:
-            self.status = _GAME_PLAY
-            self.power.enter()
-            self.map.enter()
-            self.lap.enter()
-            self.event.remove_listener([gl.EV_ENTER_FRAME, self])
-
 
 ### スプライト
 
@@ -585,9 +548,9 @@ class ThreadStage(gl.Stage):
 class ThreadSprite(gl.Sprite):
     """描画は別スレッドに投げる"""
 
-    def __init__(self, chr_no, name, x, y, z, w, h):
+    def __init__(self, parent, chr_no, name, x, y, z, w, h):
         super().__init__()
-        self.init_params(chr_no, name, x, y, z, w, h)
+        self.init_params(parent, chr_no, name, x, y, z, w, h)
 
     def show(self, frame_buffer, images, x, y):
         if self.active:
@@ -612,10 +575,6 @@ class ThreadSprite(gl.Sprite):
 class ThreadSpriteContainer(gl.SpriteContainer):
     """自分は描画しない"""
 
-    def __init__(self, name, x, y, z):
-        super().__init__()
-        super().init_params(name, x, y, z)
-
     def show(self, frame_buffer, images, x, y):
         if self.active:
             x += self.x
@@ -629,33 +588,35 @@ class ThreadSpriteContainer(gl.SpriteContainer):
 class Ship(ThreadSprite):
     """自機クラス"""
 
-    def __init__(self):
-        super().__init__(_CHR_SHIP, "ship", _SHIP_X, _SHIP_Y, _SHIP_Z, _OBJ_W, _OBJ_H)
+    def __init__(parent):
+        super().__init__(
+            parent, _CHR_SHIP, "ship", _SHIP_X, _SHIP_Y, _SHIP_Z, _OBJ_W, _OBJ_H
+        )
 
-    def ready(self):
         # 爆発
-        self.crash = Crash()
-        self.add_child(self.crash)
+        self.crash = Crash(self)
         # バースト
-        self.burst = Burst()
-        self.add_child(self.burst)
-        super().ready()
+        self.burst = Burst(self)
 
     def enter(self):
         super().enter()
         # イベントリスナー登録
         self.event.add_listener([gl.EV_ENTER_FRAME, self, True])
+        self.event.add_listener([_EV_CRASH, self, True])  # クラッシュ
 
         self.shake = False  # 振動
 
     def show(self, frame_buffer, images, x, y):
+
+        x += self.x
+        y += self.y
 
         # 状態異常 振動
         if self.shake:
             x += random.randint(-2, 2)
             y += random.randint(-2, 2)
 
-        super().show(frame_buffer, images, x, y)
+        super.show(frame_buffer, images, x, y)
 
     def ev_enter_frame(self, type, sender, option):
         """イベント:毎フレーム"""
@@ -669,7 +630,7 @@ class Ship(ThreadSprite):
 
     def start_crash(self):
         """クラッシュ"""
-        self.crash.enter()
+        self.crash.enter()  # 有効化
 
     def start_shake(self):
         """機体が振動"""
@@ -683,24 +644,20 @@ class Ship(ThreadSprite):
         self.burst.enter()
 
     def end_burst(self):
-        """スプライト停止"""
+        """スプライト削除"""
         self.burst.leave()
 
 
 class Crash(ThreadSpriteContainer):
-    """クラッシュ"""
+    """クラッシュクラス 爆風を管理"""
 
-    def __init__(self):
-        super().__init__("crash", 0, 0, _CRASH_Z)
+    def __init__(parent):
+        super().__init__(parent, "crash", 0, 0, _CRASH_Z)
+
         self.bombs = []  # 爆風
-
-    def ready(self):
         # 爆発スプライト
         for _ in range(2):
-            b = Bomb()
-            self.add_child(b)
-            self.bombs.append(b)
-        super().ready()
+            self.bombs.append(Bomb(self))
 
     def enter(self):
         super().enter()
@@ -723,7 +680,7 @@ class Crash(ThreadSpriteContainer):
 
             self.count -= 1
             if self.count == 0:
-                # results failed
+                # ゲームオーバー
                 # todo
                 pass
 
@@ -731,8 +688,9 @@ class Crash(ThreadSpriteContainer):
 class Bomb(ThreadSprite):
     """クラッシュ時の爆発"""
 
-    def __init__(self):
+    def __init__(parent):
         super().__init__(
+            parent,
             _CHR_BOMB,
             "bomb",
             _BOMB_X + random.randint(0, _BOMB_X_RANGE),
@@ -742,7 +700,7 @@ class Bomb(ThreadSprite):
             _BOMB_H,
         )
         # アニメ
-        self.init_frame_params(4, 4)
+        self.init_frame_param(4, 4)
 
     def reset(self):
         """リセット"""
@@ -754,23 +712,24 @@ class Bomb(ThreadSprite):
 class Burst(ThreadSprite):
     """加速時の爆風"""
 
-    def __init__(self):
-        super().__init__(
-            _CHR_BURST, "burst", _SHIP_X + 7, _SHIP_Y + 7, _CRASH_Z, 16, 16
+    def __init__(parent):
+        self.super().__init__(
+            parent, _CHR_BURST, "burst", _SHIP_X + 7, _SHIP_Y + 7, _CRASH_Z, 16, 16
         )
 
     def show(self, frame_buffer, images, x, y):
+
         if self.active:
-            x += random.randint(-2, 2)
-            y += random.randint(-2, 2)
+            x = self.x + random.randint(-2, 2)
+            y = self.y + random.randint(-2, 2)
             super().show(frame_buffer, images, x, y)
 
 
 class View(ThreadSprite):
-    """コースの疑似3D表示 スプライトとして処理する"""
+    """コースの3D表示 スプライトとして処理する"""
 
-    def __init__(self):
-        super().__init__(0, "view", 0, 0, _VIEW_Z, _VIEW_W, _VIEW_H)
+    def __init__(self, chr_no, name, x, y, z, w, h):
+        super().__init__(chr_no, name, x, y, z, w, h)
 
     def enter(self):
         super().enter()
@@ -786,6 +745,20 @@ class View(ThreadSprite):
         self.init_view()
         # 背景
         self.init_bg()
+        # ミニマップ初期化
+        self.event.post(
+            [
+                _EV_INIT_MINIMAP,
+                gl.EV_PRIORITY_MID,
+                0,
+                self,
+                (
+                    self.course_dat,
+                    self.vx >> (_FIX + _COURSE_RATIO),
+                    self.vz >> (_FIX + _COURSE_RATIO),
+                ),
+            ]
+        )
 
     def action(self):
         super().action()
@@ -807,29 +780,28 @@ class View(ThreadSprite):
 
     def init_view(self):
         """ビュー初期化"""
+        self.vx = 976 << _FIX  # ビューの原点 XZ座標
+        self.vz = 272 << _FIX
         self.vx_acc = 0  # ビュー XZ加速度
         self.vz_acc = 0
         self.speed = 0  # 移動速度（アクセル）
         self.speed_limit = _DEF_LIMIT_SPEED  # 速度上限
         self.speed_acc = 0  # 移動加速度
+        self.dir = 191  # 方向（初期値 上）
         self.dir_angle = 0  # 方向 角度
         self.g_speed = 0  # 重力加速度
-        self.prev_pixel = 0  # 前フレームの路面
 
     def init_bg(self):
         """背景"""
         # 手抜きBG LINEで表現
-        gl.lcd.rect(1, 42, 238, 10, 0x194A, True)
-        gl.lcd.rect(1, 52, 238, 8, 0x83B3, True)
-        gl.lcd.rect(1, 60, 238, 6, 0xFE75, True)
-        gl.lcd.rect(1, 66, 238, 6, 0xFF9D, True)
-        gl.lcd.rect(1, 70, 238, 2, 0x2D7F, True)
+        gl.lcd.rect(1, 42, 238, 12, 0x194A, True)
+        gl.lcd.rect(1, 54, 238, 6, 0xFBB5, True)
+        gl.lcd.rect(1, 60, 238, 6, 0x83B3, True)
+        gl.lcd.rect(1, 66, 238, 4, 0xFF9D, True)
+        gl.lcd.rect(1, 70, 238, 4, 0x2D7F, True)
 
     def ev_enter_frame(self, type, sender, key):
         """イベント:毎フレーム"""
-
-        if self.stage.status == _GAME_READY:
-            return
 
         # 移動
         self.move(key)
@@ -922,6 +894,7 @@ class View(ThreadSprite):
 
     def apply_field_effects(self):
         """地形効果"""
+
         x = self.vx >> (_FIX + _COURSE_RATIO)
         z = self.vz >> (_FIX + _COURSE_RATIO)
         self.stage.ship.end_shake()
@@ -929,7 +902,6 @@ class View(ThreadSprite):
         # 範囲チェック
         if x < 0 or x >= _COURSE_DATA_W or z < 0 or z >= _COURSE_DATA_H:
             self.speed_limit = _DEF_LIMIT_SPEED  # 速度リセット
-            self.prev_pixel = _COL_INDEX_OUT
             self.event.post(
                 [
                     _EV_UPDATE_POWER,
@@ -942,9 +914,10 @@ class View(ThreadSprite):
             self.stage.ship.start_shake()  # 振動
             return
 
-        pixel = self.course_dat[x + z * _COURSE_DATA_W]
+        pos = x + z * _COURSE_DATA_W
+        field = self.course_dat
         # コースアウト
-        if pixel == _COL_INDEX_OUT:
+        if field[pos] == _COL_INDEX_OUT:
             self.speed_limit = _DEF_LIMIT_SPEED  # 速度リセット
             self.event.post(
                 [
@@ -957,7 +930,7 @@ class View(ThreadSprite):
             )
             self.stage.ship.start_shake()  # 振動
         # パワーダウン
-        elif pixel == _COL_INDEX_DAMAGE:
+        elif field[pos] == _COL_INDEX_DAMAGE:
             self.event.post(
                 [
                     _EV_UPDATE_POWER,
@@ -969,7 +942,7 @@ class View(ThreadSprite):
             )
             self.stage.ship.start_shake()  # 振動
         # パワーアップ（回復）
-        elif pixel == _COL_INDEX_RECOVERY:
+        elif field[pos] == _COL_INDEX_RECOVERY:
             self.event.post(
                 [
                     _EV_UPDATE_POWER,
@@ -980,33 +953,12 @@ class View(ThreadSprite):
                 ]
             )
         # 加速
-        elif pixel == _COL_INDEX_ACC:
+        elif field[pos] == _COL_INDEX_ACC:
             self.speed_limit = _MAX_LIMIT_SPEED  # バースト
             self.speed = _MAX_LIMIT_SPEED
             self.stage.ship.start_burst()
 
-        # LAP判定
-        prev_pixel = pixel
-        if (
-            pixel == _COL_INDEX_LAP
-            and self.prev_pixel != _COL_INDEX_LAP
-            and self.dir >= self.lap[0]
-            and self.dir <= self.lap[1]
-        ):
-            # ラップ更新
-            self.event.post(
-                [
-                    _EV_RECORD_LAP,
-                    gl.EV_PRIORITY_MID,
-                    0,
-                    self,
-                    None,
-                ]
-            )
-
-        self.prev_pixel = prev_pixel
-
-    def gravity_effect(self, speed, limit):
+    def gravity_effect(speed, limit):
         """最高速以外は重力の影響受ける"""
         # 重力源の方向
         d, f = atan(self.vx >> _FIX, self.vz >> _FIX, self.g_src[0], self.g_src[1])
@@ -1016,7 +968,7 @@ class View(ThreadSprite):
 
         # ある程度近かったら
         if f < _G_THRESHOLD and speed < limit:
-            self.g_speed += f >> 5  # 近いほど強い
+            self.g_speed += f >> 4  # 近いほど強い
             if self.g_speed > _MAX_LIMIT_G_SPEED:
                 self.g_speed = _MAX_LIMIT_G_SPEED
             cos, sin = cos_sin(d)
@@ -1027,23 +979,23 @@ class View(ThreadSprite):
 
     def load_course_data(self, num):
         """コースデータ読み込み 外部バイナリファイル"""
+
         data = course_datafile[num]
         f = open(data[0], "rb")
         self.course_dat = f.read()
         f.close()
 
-        self.vx = data[1][0] << _FIX
-        self.vz = data[1][1] << _FIX
-        self.dir = data[1][2]
-        self.g_src = data[2]
-        self.lap = data[3]  # ゴール範囲
+        self.vx = data[1] << _FIX
+        self.vz = data[2] << _FIX
+        self.dir = data[3]
+        self.g_src = data[4]
 
 
 class Minimap(ThreadSpriteContainer):
     """ミニマップ表示 スプライトを描画しない"""
 
-    def __init__(self):
-        super().__init__("map", 4, 7, _MAP_Z)
+    def __init__(self, name, x, y, z):
+        super().__init__(name, x, y, z)
 
         # 前回のマーカー表示の座標
         self.prev = [0] * 2
@@ -1057,21 +1009,15 @@ class Minimap(ThreadSpriteContainer):
         self.show_flg = 1  # 点滅用
         self.interval = _MINIMAP_INTERVAL  # 点滅インターバル
 
-        # ミニマップ初期化
-        self.init_minimap(
-            self.stage.view.course_dat,
-            self.stage.view.vx >> (_FIX + _COURSE_RATIO),
-            self.stage.view.vz >> (_FIX + _COURSE_RATIO),
-        )
-
     def show(self, frame_buffer, images, x, y):
         """描画"""
         # なにもしない
         pass
 
-    def init_minimap(self, course, vx, vz):
+    def ev_init_minimap(self, type, sender, data):
         """コースデータを描画"""
 
+        course = data[0]
         i = 0
         _x = self.x
         _w = _x + _COURSE_DATA_W
@@ -1086,8 +1032,8 @@ class Minimap(ThreadSpriteContainer):
                 col = _COL_MINIMAP
                 gl.lcd.pixel(x, y, col)
 
-        self.prev[0] = vx  # 前回の座標
-        self.prev[1] = vz
+        self.prev[0] = data[1]  # 前回の座標
+        self.prev[1] = data[2]
 
         # マーカー描画
         gl.lcd.rect(
@@ -1138,9 +1084,6 @@ class Minimap(ThreadSpriteContainer):
 class Power(ThreadSpriteContainer):
     """パワー表示 スプライトを描画しない"""
 
-    def __init__(self):
-        super().__init__("power", 0, 0, _POWER_Z)
-
     def enter(self):
         super().enter()
         # イベントリスナー登録
@@ -1155,12 +1098,12 @@ class Power(ThreadSpriteContainer):
         w = self.power // _POWER_FIX
         col = _COL_POWER_1
         if w < 60:
-            col = _COL_POWER_3
+            col = _COL_POWER3
         if w < 120:
-            col = _COL_POWER_2
+            col = _COL_POWER2
 
         if w > 0:
-            gl.lcd.rect(0, 0, w - 1, 3, col, True)
+            gl.lcd.rect(0, 0, w - 1, 3, _COL_POWER_1, True)
         if w < 240:
             gl.lcd.rect(w, 0, 239, 3, _COL_POWER_OFF, True)
 
@@ -1181,32 +1124,38 @@ class Power(ThreadSpriteContainer):
 
         # ゼロになったら爆発
         if self.power == 0:
-            self.stage.ship.start_crash()
+            self.event.post(
+                [
+                    _EV_CRASH,
+                    gl.EV_PRIORITY_MID,
+                    0,
+                    self,
+                    0,
+                ]
+            )
 
 
 class Title(gl.Sprite):
     """タイトル"""
 
-    def __init__(self):
+    def __init__(self, chr_no, name, x, y, z, w, h):
         super().__init__()
-        self.init_params(_CHR_TITLE, "title", 0, 6, _MES_Z, _TITLE_W, _TITLE_H)
+        self.init_params(chr_no, name, x, y, z, w, h)
 
-    def ready(self):
         # アニメ
-        self.anime = gl.Animator("title_anime", self.event, ease.out_elastic)
+        self.anime = gl.Anime("title", ease.out_elastic)
         # クレジット
         self.credit = gl.Sprite().init_params(
             _CHR_CREDIT, "choi", 48, 125, _MES_Z, _CREDIT_W, _CREDIT_H
         )
-        self.add_child(self.credit)
-        super().ready
+        self.add_sprite(self.credit)
 
     def enter(self):
         super().enter()
 
         self.event.add_listener([gl.EV_ANIME_COMPLETE, self, True])
         # アニメのパラメータ初期化
-        self.anime.attach()
+        self.anime.attach(self)
         self.y = 100
         self.anime.start = self.y
         self.anime.delta = -100
@@ -1228,119 +1177,6 @@ class Title(gl.Sprite):
         """アニメ終了"""
         # クレジット表示
         self.credit.enter()
-
-
-class Lap(ThreadSprite):
-    """ラップ"""
-
-    def __init__(self):
-        super().__init__(_CHR_LAP, "lap", _LAP_X, _LAP_Y, _MES_Z, _LAP_W, _LAP_H)
-
-        # スタートタイム
-        self.start_time = 0
-        # ラップ
-        self.lap_count = 0
-        self.lap_time = [0] * 3  # 3周
-
-    def ready(self):
-        # ラップ表示
-        self.lap_nums = Nums(
-            1, (_CHR_LAPNUM, _LAP_NUM_W, _LAP_NUM_H), _LAP_NUM_X, _LAP_NUM_Y
-        )
-        self.add_child(self.lap_nums)
-        # タイム表示
-        self.time = ThreadSprite(_CHR_TIME, "time", _TIME_X, _TIME_Y, _MES_Z, _TIME_W, _TIME_H)
-        self.add_child(self.time)
-        self.rec_nums = Nums(
-            6, (_CHR_NUM, _REC_NUM_W, _REC_NUM_H), _REC_NUM_X, _REC_NUM_Y
-        )
-        self.add_child(self.rec_nums)
-        super().ready()
-
-    def enter(self):
-        super().enter()
-        self.lap_nums.enter()
-        self.time.enter()
-        self.rec_nums.enter()
-
-    def ev_record_lap(self, type, sender, option):
-        """ラップ更新 周回数 タイム"""
-        if self.lap_count == 0:
-            # 計測開始
-            self.start_time = utime.ticks_ms()
-        else:
-            time = utime.ticks_ms()
-            self.lap_time[self.lap_count] = time - self.start_time
-            self.start_time = time
-            self.rec_nums.update_num(self.conv_time(self.lap_time[self.lap_count]))
-
-        # todo lap == 3 -> result
-
-        self.lap_count += 1
-        self.lap_nums.update_num(self.lap_count)
-
-    def conv_time(self, val):
-        """msを 分:秒:ミリ秒 に変換"""
-        m = val // 1000 // 60
-        s = val // 1000
-        ms = (val % 1000) // 10
-
-        return m * 10000 + s * 100 + ms
-
-
-class Nums(ThreadSpriteContainer):
-    """数値表示コンテナ
-    Params:
-        digit (int): 桁
-        font(tupple): chr, width, height
-        x(int):
-        y(int):
-    """
-
-    def __init__(self, digit, font, x, y):
-        super().__init__("nums", x, y, _MES_Z)
-        self.digit = digit
-        self.nums = []
-        self.font = font
-
-    def ready(self):
-        # 数字スプライト 2桁毎にスペース
-        x = 0
-        for i in range(self.digit):
-            s = Num(self.font, x, 0, 0)
-            x += self.font[1] + 2 + (i & 1) * 2
-            self.add_child(s)
-            self.nums.append(s)
-        super().ready()
-
-    def enter(self):
-        super().enter()
-        for s in self.nums:
-            s.enter()
-
-    def update_num(num):
-        for i in range(self.digit - 1, -1, -1):
-            val = num % 10
-            num //= 10
-            self.nums[i].set_num(val)
-
-
-class Num(ThreadSprite):
-    """数値スプライト
-    Params:
-        font(tupple): chr, width, height
-        x(int):
-        y(int):
-        val(int): 初期数値
-
-    """
-
-    def __init__(self, font, x, y, val):
-        super().__init__(font[0] + val, "num", x, y, _MES_Z, font[1], font[2])
-        self.font = font
-
-    def set_num(self, val):
-        self.chr_no = self.font[0] + val
 
 
 class BlinkMessage(gl.BitmapSprite):
@@ -1381,17 +1217,17 @@ if game_status is None:
     # デフォルト
     game_status = {
         "course": 0,
-        "bestlap": [0] * 3,
+        "bestlap": [3],
         "brightness": 2,
     }
     gl.save_status(game_status, _FILENAME)
 
 # コースデータファイル
-# ファイル名, (スタート座標 方向), (重力源座標), (ゴール方向範囲),
+# ファイル名, スタート座標 方向, ゴール方向,
 course_datafile = (
-    ("course1.dat", (880, 32, 128), (496, 240), (65, 191)),
-    ("course2.dat", (32, 112, 64), (208, 224), (1, 127)),
-    ("course3.dat", (976, 368, 192), (496, 384), (129, 255)),
+    ("course1.dat", 880, 32, 127, (496, 240), 128),
+    ("course2.dat", 32, 112, 63, (208, 224), 64),
+    ("course3.dat", 976, 368, 191, (496, 384), 192),
 )
 
 # LCDの明るさ
