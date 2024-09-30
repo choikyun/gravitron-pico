@@ -114,7 +114,7 @@ _MAX_LIMIT_G_SPEED = const(32)  # 重力加速度限界値
 _POWER_FIX = const(5)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-40)
+_POWER_OUT = const(-30)
 _POWER_RECOVERY = const(10)
 
 
@@ -174,29 +174,29 @@ _CREDIT_H = const(10)
 _CHR_SHIP = const(0)
 _CHR_SHIP_L = const(1)
 _CHR_SHIP_R = const(2)
-_CHR_BOMB = const(3)  # ..6
+_CHR_BOMB = const(3)  # <=6
 _CHR_BURST = const(7)
-_CHR_NUM = const(8)  # ..17
-_CHR_LAPNUM = const(18)  # ..20
+_CHR_NUM = const(8)  # <=17
+_CHR_LAPNUM = const(18)  # <=20
 _CHR_LAP = const(22)
 _CHR_TIME = const(23)
 _CHR_PAUSE_MES = const(24)
-_CHR_READY = const(25)  # .. 8
+_CHR_READY = const(25)  # <=8
 
 # タイトル
-_CHR_TITLE = const(0)  # ..6
+_CHR_TITLE = const(0)  # <=6
 _CHR_CREDIT = const(7)
 _CHR_SUB = const(8)
-_CHR_TITLENUM = const(9)  # ..17
+_CHR_TITLENUM = const(9)  # <=17
 _CHR_R_AR = const(19)
 _CHR_L_AR = const(20)
 _CHR_BEST = const(21)
 
 # リザルト
-_CHR_RESULTS = const(0)  # ..1
-_CHR_RESULTNUM = const(2)  # ..11
-_CHR_LAP1 = const(12)  # ..15
-_CHR_NEW = const(16)  # new
+_CHR_RESULTS = const(0)  # <=1
+_CHR_RESULTNUM = const(2)  # <=11
+_CHR_LAP1 = const(12)  # <=15
+_CHR_NEW = const(16)
 _CHR_FAIL = const(17)
 
 # 重なり順
@@ -304,7 +304,7 @@ def atan(x0, y0, x1, y1):
 
 
 def thread_loop(data, lock):
-    """別スレッド（コア）で実行される描画ルーチン"""
+    """別スレッド（コア）で実行される座標変換と描画"""
 
     if gl.DEBUG:
         print("thread start")
@@ -787,10 +787,11 @@ class Ship(ThreadSprite):
             self.chr_no = _CHR_SHIP_R
         elif key.repeat & lcd.KEY_LEFT and key.repeat & lcd.KEY_B:
             self.chr_no = _CHR_SHIP_L
-
+        
     def start_crash(self):
         """クラッシュ"""
         self.crash.enter()  # 初期化して有効
+        self.start_shake()
         self.end_burst()
 
     def start_shake(self):
@@ -971,7 +972,7 @@ class View(ThreadSprite):
             # パワー消費
             power = -1
             if self.speed_limit > _DEF_LIMIT_SPEED:
-                power = -3
+                power = -2
             self.event.post(
                 [
                     _EV_UPDATE_POWER,
@@ -1399,6 +1400,7 @@ class Title(gl.SpriteContainer):
         # クレジット表示
         self.sub.enter()
         self.credit.enter()
+
         # コース選択
         self.select_course.enter()
 
@@ -1445,6 +1447,9 @@ class SelectCourse(gl.SpriteContainer):
 
     def show(self, frame_buffer, images, x, y):
         if self.active:
+
+            gl.lcd.line(0, 53, 239, 53, 0xFD00)
+            gl.lcd.line(0, 108, 239, 108, 0xFD00)
 
             _x = x + self.x
             _y = y + self.y
@@ -1508,7 +1513,7 @@ class TitleNums(gl.SpriteContainer):
 
     def __init__(self):
         super().__init__()
-        super().init_params("title-lap", 110, 18, 100)
+        super().init_params("title-lap", 100, 18, 100)
         self.nums = []
 
     def enter(self):
@@ -1516,7 +1521,7 @@ class TitleNums(gl.SpriteContainer):
         x = 0
         for i in range(6):
             s = TitleNum((_CHR_TITLENUM, _REC_NUM_W, _REC_NUM_H), x, 0, 0)
-            x += _REC_NUM_W + 2 + (i & 1) * 2
+            x += _REC_NUM_W + 2 + (i & 1) * 6
             self.add_child(s)
             self.nums.append(s)
             s.enter()
@@ -1865,8 +1870,8 @@ class ReadyGo(ThreadSprite):
 
     def enter(self):
         super().enter()
-        self.duration = 30 * 2
-        self.interval = 3
+        self.duration = 30 * 4
+        self.interval = 5
         self.active = self.visible = True
 
     def action(self):
@@ -1895,7 +1900,7 @@ class PauseMes(ThreadSprite):
     """ポーズ中のメッセージ"""
 
     def __init__(self):
-        super().__init__(_CHR_PAUSE_MES, "pause", 45, 80, _MES_Z, 140, 16)
+        super().__init__(_CHR_PAUSE_MES, "pause", 99, 118, _MES_Z, 140, 16)
 
 
 ### グローバル
