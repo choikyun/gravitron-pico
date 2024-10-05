@@ -2,8 +2,9 @@
 
 https://www.waveshare.com/pico-lcd-1.14.htm
 """
+
 from machine import Pin, SPI, PWM
-import framebuf
+from framebuf import FrameBuffer, RGB565
 from micropython import const
 
 
@@ -32,8 +33,8 @@ LCD_BRIGHTNESS_MAX = const(5)
 brightness_table = const((4095, 8191, 16383, 32767, 65535))
 
 
-class LCD(framebuf.FrameBuffer):
-    """Pico LCD 1.14inch の画面表示制御"""
+class LCD114(FrameBuffer):
+    """ 1.14inch LCD の画面表示制御"""
 
     def __init__(self):
         self.cs = Pin(_CS, Pin.OUT)
@@ -55,7 +56,7 @@ class LCD(framebuf.FrameBuffer):
 
         # LCD用のバッファ RGB565
         self.buf = bytearray(LCD_W * LCD_H * 2)
-        super().__init__(self.buf, LCD_W, LCD_H, framebuf.RGB565)
+        super().__init__(self.buf, LCD_W, LCD_H, RGB565)
 
         # 液晶の明るさ
         self.pwm = PWM(Pin(_BL))

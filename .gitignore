@@ -1,2 +1,4 @@
 tools/.venv
 images/
+.vscode
+.micropico

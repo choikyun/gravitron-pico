@@ -1,9 +1,9 @@
 """イージング
-よく使うもののみ
+よく使うものだけ
 """
 __author__ = "Choi Gyun 2022"
 
-import math
+from math import pi, sin, asin, pow
 
 
 def linear(current, start, delta, total):
@@ -66,10 +66,10 @@ def in_elastic(current, start, delta, total):
         a = delta
         s = p / 4
     else:
-        s = p / (2 * math.pi) * math.asin(delta / a)
+        s = p / (2 * pi) * asin(delta / a)
 
     current -= 1
-    return -(a * math.pow(2, 10 * current) * math.sin((current * total - s) * (2 * math.pi) / p)) + start
+    return -(a * pow(2, 10 * current) * sin((current * total - s) * (2 * pi) / p)) + start
 
 
 def out_elastic(current, start, delta, total):
@@ -91,9 +91,9 @@ def out_elastic(current, start, delta, total):
         a = delta
         s = p / 4
     else:
-        s = p / (2 * math.pi) * math.asin(delta / a)
+        s = p / (2 * pi) * asin(delta / a)
 
-    return a * math.pow(2, -10 * current) * math.sin((current * total - s) * (2 * math.pi) / p) + delta + start
+    return a * pow(2, -10 * current) * sin((current * total - s) * (2 * pi) / p) + delta + start
 
 
 def inout_elastic(current, start, delta, total):
@@ -115,11 +115,11 @@ def inout_elastic(current, start, delta, total):
         a = delta
         s = p / 4
     else:
-        s = p / (2 * math.pi) * math.asin(delta / a)
+        s = p / (2 * pi) * asin(delta / a)
 
     if current < 1:
         current -= 1
-        return -0.5 * (a * math.pow(2, 10 * current) * math.sin((current * total - s) * (2 * math.pi) / p)) + start
+        return -0.5 * (a * pow(2, 10 * current) * sin((current * total - s) * (2 * pi) / p)) + start
 
     current -= 1
-    return a * math.pow(2, -10 * current) * math.sin((current * total - s) * (2 * math.pi) / p) * 0.5 + delta + start
+    return a * pow(2, -10 * current) * sin((current * total - s) * (2 * pi) / p) * 0.5 + delta + start

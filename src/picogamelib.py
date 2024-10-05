@@ -1,40 +1,51 @@
-"""PicoGameLib
+""" Pico Game Library
 
-シンプルなゲームライブラリ.
+簡単なゲームライブラリ
 
-・スプライト
-    画面に表示されるものはすべてスプライト. フレームアニメ可.
-    スプライトには固有のアクションを設定できる(デフォルトはアニメ用のフレームを進める処理).
-    スプライトを管理するステージに登録することで有効化.
-・ステージ
-    BG と スプライト を描画して LCD に転送する.
-・イベント
-    オブジェクト間の連携はイベントで行う.
-    各オブジェクトは初期化時にイベントリスナーを登録する.
-・シーン
-    タイトル画面, ゲーム画面, ポーズ画面 など各画面はシーンで表現.
-    シーンは毎フレーム enter_frame イベントを発行. 各オブジェクトはこれを購読して定期処理.
-    キー入力, イベント, ステージ はシーンが管理.
-・ディレクター
-    シーンをスタックで管理.
+・Director
+  シーンをスタックで管理。
+
+    ・Scene
+      タイトル画面、 ゲーム画面 など各画面はシーンで表現。
+      キー入力、 イベント、 ステージ はシーンが管理。
+
+        [描画]
+        ・Stage
+          BG と スプライト を描画して LCD に転送する。
+          ゲームの処理はここにまとめる。
+
+            ・Sprite
+              画面に表示されるものはすべてスプライト。
+              スプライトには固有のアクションを設定できる。(デフォルトはフレームアニメ用の処理)
+              ステージに登録することで描画される。
+
+[動作]
+・event
+  オブジェクト間の連携はイベント経由で行う。
+
+・Animatior
+  数値のアニメ用
+
+[その他]
+・SpritePool
+  あらかじめスプライトを生成して使用したい場合に。
+
 """
 
 __version__ = "0.2.0"
 __author__ = "Choi Gyun 2024"
 
-import io
-import json
-import utime
-import framebuf as buf
-import micropython
-import gc
+from io import open
+from json import load, dump
+from utime import ticks_ms, ticks_diff
+from framebuf import FrameBuffer, RGB565
+from gc import collect
 from micropython import const
-import picolcd114 as lcd114
+from picolcd114 import LCD114, LCD_W
+from gamedata import palette565
 
-import gamedata as dat
 
-
-DEBUG = True
+DEBUG = False
 
 
 # イベント
@@ -48,9 +59,9 @@ EV_ANIME_COMPLETE = const("ev_anime_complete")
 """アニメ終了"""
 
 # イベント プライオリティ
-EV_PRIORITY_HI = const(10)
-EV_PRIORITY_MID = const(50)
-EV_PRIORITY_LOW = const(100)
+EV_PRIORITY_HI = const(100)
+EV_PRIORITY_MID = const(500)
+EV_PRIORITY_LOW = const(1000)
 
 DEFAULT_FPS = const(30)
 """デフォルトFPS"""
@@ -60,14 +71,16 @@ def_bg_color = 0x0000
 def_alpha_color = 0x0726
 """透過色"""
 
-lcd = lcd114.LCD()
+lcd = LCD114()
 """BGバッファ 全シーン共有"""
 
 
 def load_status(filename):
     """ステータスロード"""
     try:
-        d = json.load(io.open(filename, "r"))
+        f = open(filename, "r")
+        d = load(f)
+        f.close
     except:
         d = None
         print(":-( Error Load Status.")
@@ -77,10 +90,11 @@ def load_status(filename):
 def save_status(d, filename):
     """ステータスセーブ"""
     try:
-        json.dump(d, io.open(filename, "w"))
+        f = open(filename, "w")
+        dump(d, f)
+        f.close
     except:
         print(":-( Error Save Status.")
-        pass
 
 
 def create_image_buffer(palette, image_dat, w, h):
@@ -94,7 +108,7 @@ def create_image_buffer(palette, image_dat, w, h):
         h（int）: 高さ
         1インデックスは 2x2 ピクセル
     """
-    buf565 = buf.FrameBuffer(bytearray(w * h * 2), w, h, buf.RGB565)
+    buf565 = FrameBuffer(bytearray(w * h * 2), w, h, RGB565)
     # バッファに描画
     pos = 0
     for y in range(0, h, 2):
@@ -445,7 +459,7 @@ class BitmapSprite(Sprite):
             w = self.w
             w2 = w * 2
             h = self.h
-            lcd_w = lcd114.LCD_W * 2
+            lcd_w = LCD_W * 2
             start = x * 2 + y * lcd_w
 
             idx = 0
@@ -645,7 +659,6 @@ class Stage(SpriteContainer):
             f = open(self.name + ".dat", "rb")
         except:
             print(":‑( Error Load Resources.")
-            f.close()
             return
 
         num = int.from_bytes(f.read(1), "big")  # ファイル数
@@ -657,7 +670,7 @@ class Stage(SpriteContainer):
             if img_type == 0:
                 # スプライト
                 self.resources["images"].append(
-                    create_image_buffer(dat.palette565, f.read(size), w * 2, h * 2)
+                    create_image_buffer(palette565, f.read(size), w * 2, h * 2)
                 )
             else:
                 # ビットマップ（フレームバッファを作成しない）
@@ -669,7 +682,7 @@ class Stage(SpriteContainer):
 
         self.resources["images"].clear()
         self.resources["misc"].clear()
-        gc.collect()
+        collect()
 
 
 class Animator:
@@ -921,7 +934,7 @@ class Scene:
         self.key = key
 
         # FPS関連
-        self.fps_ticks = utime.ticks_ms()
+        self.fps_ticks = ticks_ms()
         self.fps = DEFAULT_FPS
         self.fps_interval = 1000 // self.fps
         self.active = False  # 現在シーンがアクティブか
@@ -950,9 +963,11 @@ class Scene:
 
     def action(self):
         """実行"""
-        t = utime.ticks_ms()
-        if utime.ticks_diff(t, self.fps_ticks) < self.fps_interval:  # FPS
+        t = ticks_ms()
+        if ticks_diff(t, self.fps_ticks) < self.fps_interval:  # FPS
             self.active = False
+            # if self.frame_count & 10 == 0:
+            #    gc.collect()
             return
 
         self.fps_ticks = t
@@ -1008,7 +1023,7 @@ class Director:
         # シーンのリスト
         self.scenes = scenes
         self.key = key
-        
+
         # シーン間で共有する値
         self.values = [0] * 3
 
@@ -1017,7 +1032,7 @@ class Director:
         Params:
             scene_name (str): シーン名
         """
-        gc.collect()
+        collect()
         self.is_playing = False  # 一時停止
         s = self.__get_scene(scene_name)  # 名前でシーン取得
         if s is None:
