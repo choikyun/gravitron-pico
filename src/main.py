@@ -42,14 +42,18 @@ from picogamelib import (
 
 
 ### 疑似3D表示
+
 _VIEW_W = const(79)  # ビューサイズ
 _VIEW_H = const(20)
-
 _VIEW_RATIO_W = const(3)  # ビューとスクリーンの拡大比率（1ピクセル=3x3ピクセル）
 _VIEW_RATIO_H = const(3)
-
 _VIEW_W_START = const(-39)  # ビュー水平方向 開始・終了座標 -39 ... 39 (79ピクセル)
 _VIEW_W_END = const(39 + 1)
+
+_SCREEN_X = const(1)  # スクリーン描画 開始座標
+_SCREEN_Y = const(75)
+_PIXEL_W = const(_VIEW_RATIO_W)  # 1ピクセルサイズ
+_PIXEL_H = const(_VIEW_RATIO_H)
 
 _PX_FIX = const(256)  # 描画用 固定小数
 _START_PX = const(_VIEW_W_START * _PX_FIX)  # 水平方向 描画開始座標
@@ -57,40 +61,31 @@ _START_PX2 = const((_VIEW_W_START + 1) * _PX_FIX)  # 水平方向 描画開始�
 _END_PX = const(_VIEW_W_END * _PX_FIX)  # 水平方向 描画終了座標
 
 _FIX = const(10)  # 固定小数 10bit
-
 _MAX_RAD = const(256)  # 最大角度 256度
-_H_RAD = const(_MAX_RAD // 2)  # 角度 1/2
-
+_H_RAD = const(_MAX_RAD // 2)  # 半周角度
 _ATAN_SIZE = const(3)  # atanテーブルの長辺 基準の大きさ
-
-_SCREEN_X = const(1)  # スクリーン描画 開始座標
-_SCREEN_Y = const(75)
-
-_PIXEL_W = const(_VIEW_RATIO_W)  # 1ピクセルサイズ3
-_PIXEL_H = const(_VIEW_RATIO_H)
 
 _COURSE_DATA_W = const(64)  # コースデータ 64 * 32
 _COURSE_DATA_H = const(32)
 _COURSE_RATIO = const(4)  # コースデータ（1byte=16px）
-
 _COURSE_DATA_COL = const(6)  # コースデータ 1行 64px
-
 _MAX_COURSE = const(6)  # コース数
 
-### 描画スレッド
+### 描画コマンド
+
 _COMM_VIEW = const(0)  # ビュー座標計算・描画
 _COMM_SPRITE = const(1)  # スプライト描画
 _COMM_LCD = const(2)  # LCDにバッファ転送
 _COMM_EXIT = const(3)  # スレッド終了
 
-# カラー
+### カラー
+
 # インデックス
 _COL_INDEX_OUT = const(1)  # コース外
 _COL_INDEX_DAMAGE = const(8)  # ダメージ
 _COL_INDEX_RECOVERY = const(11)
 _COL_INDEX_ACC = const(10)  # 加速
 _COL_INDEX_LAP = const(14)  # ラップ更新
-
 # 565
 _COL_BG = const(0)  # BGカラー
 _COL_OUT = const(0x194A)  # コース外
@@ -99,9 +94,13 @@ _COL_MARKER = const(0xF809)  # ミニマップ上のマーカー
 _COL_POWER_1 = const(0x0726)  # パワー
 _COL_POWER_2 = const(0xFF64)
 _COL_POWER_3 = const(0xF809)
+_COL_POWER_FLASH = const(0xFF9D)
 _COL_POWER_OFF = const(0x042A)
+
 _COL_ALPHA = const(0x0726)  # スプライト透過色
 _COL_TITLEMAP1 = const(0x0726)  # タイトル画面のコースマップ
+
+### ゲームステータス
 
 _GAME_READY = const(0)  # スタート前
 _GAME_PLAY = const(1)  # ゲーム中
@@ -117,7 +116,7 @@ _ACC_FIX = const(5)
 _SPEED_ACC_LIMIT = const(16)  # 加速度限界値
 _ADD_SPEED_ACC = const(1)  # 加速度
 _DEC_SPEED_ACC = const(-1)  # 減速 摩擦
-_MAX_DEC_SPEED_ACC = const(-8)  # 減速 最大値
+_MAX_DEC_SPEED_ACC = const(-4)  # 減速 最大値
 
 # ステアリング
 _MAX_DIR_ANGLE = const(2 << _ACC_FIX)  # 最大角度
@@ -126,23 +125,23 @@ _DEC_DIR_ANGLE = const(2)  # 回転減速
 
 # スピード
 _DEF_LIMIT_SPEED = const(3 << _ACC_FIX)  # 通常時の最高速度
-_MAX_LIMIT_SPEED = const(6 << _ACC_FIX)  # バースト時時の最高速度
+_MAX_LIMIT_SPEED = const(6 << _ACC_FIX)  # バースト時の最高速度
 
 # 重力
-_G_THRESHOLD = const(400)  # 重力の影響のしきい値
-_MAX_LIMIT_G_SPEED = const(32)  # 重力加速度限界値
-_MAX_LIMIT_G_SPEED_EX = const(48)  # 重力加速度限界値
+_G_THRESHOLD = const(256)  # 重力の影響のしきい値
+_MAX_LIMIT_G_SPEED = const(32)  # 通常モード 重力加速度限界値
+_MAX_LIMIT_G_SPEED_EX = const(48)  # EXモード 重力加速度限界値
 
 # クラッシュ
-_CRASH_COUNT = const(3) # 爆発回数 この間に回復できたらセーフ
+_CRASH_COUNT = const(3)  # 爆発回数 この間に回復できたらセーフ
 
 # パワー
 _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-40)
-_POWER_DAMAGE = const(-4)
-_POWER_RECOVERY = const(20)
+_POWER_OUT = const(-50)
+_POWER_DAMAGE = const(-5)
+_POWER_RECOVERY = const(10)
 
 
 ### スプライト
@@ -163,28 +162,29 @@ _BOMB_X_RANGE = const(32)
 _BOMB_Y_RANGE = const(0)
 
 # ミニマップ
-_MINIMAP_INTERVAL = const(5)
+_MINIMAP_INTERVAL = const(5)  # 点滅インターバル
 
-# ラップ
+# ラップ タイム
 _LAP_X = const(74)
 _LAP_Y = const(7)
+_TIME_X = const(65)
+_TIME_Y = const(0)
 
+# 数字
 _LAP_NUM_X = const(35)
 _LAP_NUM_Y = const(2)
-
 _REC_NUM_X = const(70)
 _REC_NUM_Y = const(18)
 _REC_NUM_W = const(16)
 _REC_NUM_H = const(16)
 
-_TIME_X = const(65)
-_TIME_Y = const(0)
-
+# 看板
 _READY_X = const(78)
 _READY_Y = const(76)
 _READY_W = const(84)
 _READY_H = const(28)
 
+# クレジット
 _CREDIT_W = const(144)
 _CREDIT_H = const(10)
 
@@ -215,7 +215,6 @@ _CHR_PLANET = const(21)
 _CHR_EX = const(22)
 _CHR_DEBUG = const(23)
 
-
 # リザルト
 _CHR_RESULTS = const(0)  # <=2
 _CHR_RESULTNUM = const(3)  # <=12
@@ -244,7 +243,7 @@ _EV_REVERSE = const("ev_reverse")  # 逆走
 _FILENAME = const("gv100.json")
 
 
-### クロック 250MHz
+### クロック 250MHz 大丈夫？
 freq(250000000)
 
 
@@ -354,15 +353,12 @@ def thread_loop(data, lock):
 
 
 def draw_view_v3(cmd):
-    """座標計算・描画
-    ビューは0度で右を向いている
-    ビューの水平方向はY座標、Z方向（奥行き）はX座標になっている    
-    """
+    """座標計算・描画"""
     _, vx, vz, cos, sin, field, buff = cmd
 
     buff_rect = buff.rect  # メソッドを変数に代入しておく
 
-    # bg 3Dビュー部分クリア
+    # ビュー部分(画面の下半分)クリア
     buff_rect(_SCREEN_X, _SCREEN_Y, 238, 60, _COL_BG, True)
 
     pal = palette565  # パレット
@@ -375,7 +371,7 @@ def draw_view_v3(cmd):
         pw = _PIXEL_W  # ピクセル幅
 
         # 最初のピクセルを取得
-        _y = _START_PX // h  # -39 * 256
+        _y = _START_PX // h  # -39 * 256 // h
         pos_x = (((zcos - _y * sin) >> _FIX) + vx) >> _COURSE_RATIO
         # pos_y はあらかじめ64倍
         pos_y = ((((zsin + _y * cos) >> _FIX) + vz) << 2) & 0xFFC0
@@ -384,12 +380,11 @@ def draw_view_v3(cmd):
         else:
             prev_col = pal[field[pos_x + pos_y]]
 
-        for y in range(_START_PX2, _END_PX, _PX_FIX):  # -38*256 .. 39*256
+        for y in range(_START_PX2, _END_PX, _PX_FIX):  # -38*256 <= y <= 39*256
             _y = y // h  # 水平方向の拡縮
             # 回転 コースデータサイズに補正
             pos_x = (((zcos - _y * sin) >> _FIX) + vx) >> _COURSE_RATIO
             pos_y = ((((zsin + _y * cos) >> _FIX) + vz) << 2) & 0xFFC0
-
             if pos_x < 0 or pos_x >= _COURSE_DATA_W or pos_y < 0 or pos_y >= 2048:
                 col = _COL_OUT
             else:
@@ -485,6 +480,8 @@ class MainScene(Scene):
 
         # ポーズ中の経過時間
         self.pause_time = 0
+        # 画面停止時間
+        self.freeze_time = 30
 
     def action(self):
         super().action()
@@ -511,8 +508,10 @@ class MainScene(Scene):
                     director.push("title")
             # レース終了
             elif self.stage.status == _GAME_FINISH:
-                director.pop()
-                director.push("results")
+                self.freeze_time -= 1
+                if self.freeze_time == 0:
+                    director.pop()
+                    director.push("results")
 
 
 ### ステージ
@@ -566,9 +565,6 @@ class ThreadStage(Stage):
 
         # バッファクリア
         lcd.fill(_COL_BG)
-        # リスナー
-        self.event.add_listener([EV_ENTER_FRAME, self, True])
-        self.event.add_listener([_EV_FINISH, self, True])
 
         # ゲームモード
         self.mode = game_status["mode"]  # 0 通常 1 EXモード 2 DEBUG
@@ -590,6 +586,9 @@ class ThreadStage(Stage):
         self.view = View()  # 疑似3Dビュー
         self.add_child(self.view)
         self.view.enter()
+
+        self.event.add_listener([_EV_FINISH, self, True])
+        self.event.add_listener([EV_ENTER_FRAME, self, True])
 
         # 開始前のデモ
         self.status = _GAME_READY  # ゲーム開始前
@@ -632,7 +631,6 @@ class ThreadStage(Stage):
 
     def stop_thread(self):
         """描画スレッド停止"""
-        # 描画スレッド停止
         self.lock.acquire()
         self.thread_data[0] = [(_COMM_EXIT,)]
         self.lock.release()
@@ -648,18 +646,22 @@ class ThreadStage(Stage):
                 self.lap.enter()
                 self.readygo.enter()  # ready! 表示
                 self.status = _GAME_PLAY
+                self.event.remove_listener([EV_ENTER_FRAME, self])  # リスナーはずす
 
     def ev_finish(self, type, sender, option):
         # ゲーム終了
         self.status = _GAME_FINISH
         self.stage.scene.director.values[2] = option  # 通常ゴール 5 | 失敗 1..3
+        self.event.disable_listeners(
+            (EV_ENTER_FRAME, EV_ANIME_ENTER_FRAME)
+        )  # 一定時間停止
 
 
 ### スプライト
 
 
 class ThreadSprite(Sprite):
-    """描画は別スレッドに投げるスプライトのベース"""
+    """描画は別スレッドに投げるスプライト"""
 
     def __init__(self, chr_no, name, x, y, z, w, h):
         super().__init__()
@@ -778,7 +780,7 @@ class Crash(ThreadSpriteContainer):
         super().enter()
 
         # 爆発スプライト
-        for _ in range(3):
+        for _ in range(2):
             b = Bomb()
             self.add_child(b).enter()
             self.bombs.append(b)
@@ -794,11 +796,12 @@ class Crash(ThreadSpriteContainer):
             if self.interval == 0:
                 self.interval = 16
 
-                for i in range(3):
+                for i in range(2):
                     self.bombs[i].reset()  # 次の爆風
 
                 self.count -= 1
                 if self.count == 0:
+                    # 終了
                     self.event.post(
                         [
                             _EV_FINISH,
@@ -813,7 +816,7 @@ class Crash(ThreadSpriteContainer):
         """爆発開始"""
         self.interval = 16  # 1回分の爆発のインターバル
         self.count = _CRASH_COUNT  # 爆発回数
-        for i in range(3):
+        for i in range(2):
             self.bombs[i].reset()
 
         self.active = True
@@ -867,7 +870,7 @@ class Burst(ThreadSprite):
 
 
 class View(ThreadSprite):
-    """コースの疑似3D表示 スプライトとして処理する"""
+    """コースの疑似3D表示 スプライトとして処理"""
 
     def __init__(self):
         super().__init__(0, "view", 0, 0, _VIEW_Z, _VIEW_W, _VIEW_H)
@@ -878,14 +881,14 @@ class View(ThreadSprite):
         # イベントリスナー登録
         self.event.add_listener([EV_ENTER_FRAME, self, True])
 
-        # コース初期化
-        self.course_no = game_status["course"]
-        self.load_course_data(self.course_no)
-
         # ビュー初期化
         self.init_view()
         # 背景
         self.init_bg()
+
+        # コース初期化
+        self.course_no = game_status["course"]
+        self.load_course_data(self.course_no)
 
     def show(self, frame_buffer, images, x, y):
         """フレームバッファに描画"""
@@ -911,8 +914,9 @@ class View(ThreadSprite):
         self.speed_limit = _DEF_LIMIT_SPEED  # 速度上限
         self.speed_acc = 0  # 移動加速度
         self.g_speed = 0  # 重力加速度
-        self.dir_angle = 0 # 進行方向角度
-        self.camera_cos = 0
+        # self.dir = 0  # 進行方向
+        self.dir_angle = 0  # 進行方向角度
+        self.camera_cos = 0  # 描画用 cos sin
         self.camera_sin = 0
         self.prev_pixel = 0  # 前フレームの路面
 
@@ -927,39 +931,45 @@ class View(ThreadSprite):
 
     def ev_enter_frame(self, type, sender, key):
         """イベント:毎フレーム"""
+        # 操作
+        self.operate(key)
         # 移動
-        self.move(key)
+        self.move()
         # 地形効果判定
         self.apply_field_effects()
 
-    def move(self, key):
-        """自機移動"""
-        # アクセル
-        if key.repeat & KEY_B:
-            self.speed_acc += _ADD_SPEED_ACC  # 加速度
-            if self.speed_acc >= _SPEED_ACC_LIMIT:
-                self.speed_acc = _SPEED_ACC_LIMIT
-            # パワー消費
-            ex = 1 + (game_status["mode"] & 1)
-            power = -1 * ex
-            if self.speed_limit > _DEF_LIMIT_SPEED:
-                power = -3 * ex
-            self.event.post(
-                [
-                    _EV_UPDATE_POWER,
-                    EV_PRIORITY_MID,
-                    0,
-                    self,
-                    power,
-                ]
-            )
-        # 減速
-        else:
-            self.speed_acc += _DEC_SPEED_ACC
-            if self.speed_acc <= _MAX_DEC_SPEED_ACC:
-                self.speed_acc = _MAX_DEC_SPEED_ACC
+    def operate(self, key):
+        """操作"""
+        if self.stage.status == _GAME_PLAY:
+            # アクセル
+            if key.repeat & KEY_B:
+                self.speed_acc += _ADD_SPEED_ACC  # 加速度
 
-        # 重力の影響受ける
+                if self.speed_acc >= _SPEED_ACC_LIMIT:
+                    self.speed_acc = _SPEED_ACC_LIMIT
+                # パワー消費
+                ex = 1 + (self.stage.mode & 1)
+                power = -1 * ex
+                if self.speed_limit > _DEF_LIMIT_SPEED:
+                    power = -3 * ex
+                self.event.post(
+                    [
+                        _EV_UPDATE_POWER,
+                        EV_PRIORITY_MID,
+                        0,
+                        self,
+                        power,
+                    ]
+                )
+            # 減速
+            else:
+                self.speed_acc += _DEC_SPEED_ACC
+                if self.speed_acc <= _MAX_DEC_SPEED_ACC:
+                    self.speed_acc = _MAX_DEC_SPEED_ACC
+
+    def move(self):
+        """移動"""
+        # 重力
         self.gravity_effect(self.speed)
 
         # 左右移動（回転）
@@ -1278,16 +1288,18 @@ class Power(ThreadSpriteContainer):
     def __init__(self):
         super().__init__("power", 0, 0, _BG_Z)
 
-
     def enter(self):
         super().enter()
 
         # イベントリスナー登録
-        if game_status["mode"] & 2 != 2:  # デバッグモードはノーダメージ
+        if self.stage.mode & 2 != 2:  # デバッグモードはノーダメージ
             self.event.add_listener([_EV_UPDATE_POWER, self, True])
 
         self.power = _MAX_POWER
         self.update_power()
+
+        self.flash = 0  # エネルギーがゼロになったら点滅
+        self.flash_interval = 10
 
     def update_power(self):
         """パワーゲージを描画"""
@@ -1303,6 +1315,16 @@ class Power(ThreadSpriteContainer):
             lcd.rect(0, 0, w - 1, 3, col, True)
         if w < 240:
             lcd.rect(w, 0, 239, 3, _COL_POWER_OFF, True)
+
+        if w <= 0:
+            self.flash_interval -= 1
+            if self.flash_interval == 0:
+                self.flash_interval = 10
+                self.flash ^= 1
+            if self.flash:
+                lcd.rect(w, 0, 239, 3, _COL_POWER_FLASH, True)
+        else:
+            self.flash = 0
 
     def show(self, frame_buffer, images, x, y):
         """描画 なにもしない"""
@@ -1321,8 +1343,8 @@ class Power(ThreadSpriteContainer):
 
         # 爆発
         if self.power <= 0 and self.stage.ship.is_crash == False:
-            self.stage.ship.start_crash() # 爆風
-            self.stage.view.crash() # 速度リセット
+            self.stage.ship.start_crash()  # 爆風
+            self.stage.view.crash()  # 速度リセット
         # 爆発終了（復帰）
         elif self.power > 0 and self.stage.ship.is_crash:
             self.stage.ship.end_crash()
@@ -1408,7 +1430,6 @@ class Title(SpriteContainer):
         """アニメ終了"""
         self.sub.enter()
         self.credit.enter()
-
         # コース選択
         self.select_course.enter()
 
@@ -1439,7 +1460,6 @@ class SelectCourse(SpriteContainer):
         self.add_child(self.planet_num)
         self.planet_num.enter()
         self.planet_num.update_num()
-
         self.title_nums = TitleNums()
         self.add_child(self.title_nums)
         self.title_nums.enter()
@@ -1448,13 +1468,14 @@ class SelectCourse(SpriteContainer):
         self.load_course(self.course_num)
 
     def load_course(self, num):
-        """コースアイコン"""
+        """コースマップ"""
         data = course_datafile[num]
         try:
             f = open(data[0], "rb")
             self.course = f.read()
             f.close()
         except:
+            self.course = None
             print(":‑( Error Load Course Data.")
 
     def show(self, frame_buffer, images, x, y):
@@ -1463,24 +1484,25 @@ class SelectCourse(SpriteContainer):
             lcd.line(0, 56, 239, 56, 0xFD00)
             lcd.line(0, 111, 239, 111, 0xFD00)
 
-            _x = x + self.x
-            _y = y + self.y
-            lcd.rect(_x - 4, _y - 4, 72, 40, _COL_TITLEMAP1)
+            if self.course is not None:
+                _x = x + self.x
+                _y = y + self.y
+                lcd.rect(_x - 4, _y - 4, 72, 40, _COL_TITLEMAP1)
 
-            i = 0
-            _w = _x + _COURSE_DATA_W
-            _h = _y + _COURSE_DATA_H
-            course = self.course
-            lcd_pixel = lcd.pixel
-            for py in range(_y, _h):
-                for px in range(_x, _w):
-                    p = course[i]
-                    i += 1
-                    if p == _COL_INDEX_OUT:
-                        continue
-                    else:
-                        col = _COL_TITLEMAP1
-                    lcd_pixel(px, py, col)
+                i = 0
+                _w = _x + _COURSE_DATA_W
+                _h = _y + _COURSE_DATA_H
+                course = self.course
+                lcd_pixel = lcd.pixel
+                for py in range(_y, _h):
+                    for px in range(_x, _w):
+                        p = course[i]
+                        i += 1
+                        if p == _COL_INDEX_OUT:
+                            continue
+                        else:
+                            col = _COL_TITLEMAP1
+                        lcd_pixel(px, py, col)
 
             super().show(frame_buffer, images, x, y)
 
@@ -1751,6 +1773,8 @@ class Lap(ThreadSpriteContainer):
 
     def ev_record_lap(self, type, sender, option):
         """更新: 周回数・タイム"""
+        self.show_once = 1  # 1回だけ表示
+
         if self.lap_count == 0:
             # 計測開始
             self.start_time = ticks_ms()
@@ -1765,7 +1789,6 @@ class Lap(ThreadSpriteContainer):
             self.disp_time[self.lap_count - 1] = d
             self.rec_nums.update_num(d)
             self.stage.readygo.countup()  # ラップ更新
-            self.show_once = 1 # 1回だけ表示
 
         # 終了
         if self.lap_count == 3:
@@ -1783,19 +1806,19 @@ class Lap(ThreadSpriteContainer):
             self.disp_time[3] = self.conv_time(total)
 
             # ベストレコード更新
-            if game_status["mode"] & 2 != 2:
+            if self.stage.mode & 2 != 2:
                 self.stage.scene.director.values[1] = self.update_best_record(total)
             else:
                 self.stage.scene.director.values[1] = False
-            return
-
-        self.lap_count += 1
-        self.lap_nums.update_num(self.lap_count)
+        else:
+            self.lap_count += 1
+            self.lap_nums.update_num(self.lap_count)
 
     def ev_reverse(self, type, sender, option):
         """逆走"""
         if self.lap_count > 0:
             self.lap_count -= 1
+            self.stage.readygo.countdown()  # ひとつ戻る
 
         self.show_once = 1
         self.lap_nums.update_num(self.lap_count)
@@ -1812,13 +1835,13 @@ class Lap(ThreadSpriteContainer):
     def update_best_record(self, current):
         """ベストレコード"""
         course_num = game_status["course"]
-        if game_status["mode"] & 1 == 0:
+        if self.stage.mode & 1 == 0:
             best = game_status["bestlap"][course_num]
         else:
             best = game_status["bestlap_ex"][course_num]
 
         if current < best:
-            if game_status["mode"] & 1 == 0:
+            if self.stage.mode & 1 == 0:
                 game_status["bestlap"][course_num] = current  # ミリ秒
                 game_status["displap"][course_num] = self.conv_time(current)  # 表示用
             else:
@@ -1898,7 +1921,7 @@ class Num(ThreadSprite):
 
 
 class ReadyGo(ThreadSprite):
-    """LAP更新"""
+    """LAP更新表示"""
 
     def __init__(self):
         super().__init__(
@@ -1933,17 +1956,23 @@ class ReadyGo(ThreadSprite):
             super().show(frame_buffer, images, x, y)
 
     def countup(self):
+        """次の表示"""
         self.duration = 30 * 2
         self.interval = 5
         self.active = self.visible = True
         self.chr_no += 1
+
+    def countdown(self):
+        """逆走時巻き戻す"""
+        if self.chr_no > _CHR_READY:
+            self.chr_no -= 1
 
 
 class PauseMes(ThreadSprite):
     """ポーズ中のメッセージ"""
 
     def __init__(self):
-        super().__init__(_CHR_PAUSE_MES, "retry", 160, 119, _MES_Z, 80, 16)
+        super().__init__(_CHR_PAUSE_MES, "retry", 178, 119, _MES_Z, 80, 16)
 
 
 ### グローバル
@@ -1965,8 +1994,8 @@ if game_status is None:
     }
     save_status(game_status, _FILENAME)
 
-# コースデータファイル
-# ファイル名, (スタート座標 方向), (重力源座標), (ゴール方向範囲),
+# コースデータ
+# ファイル名, (スタート座標 方向), (重力源座標), (ゴール方向範囲)
 course_datafile = (
     ("course1.dat", (880, 32, 128), (496, 240), (65, 191)),
     ("course2.dat", (32, 128, 64), (784, 240), (1, 127)),
@@ -1979,9 +2008,7 @@ course_datafile = (
 # LCDの明るさ
 lcd.brightness(game_status["brightness"])
 
-# シーン
 key = InputKey()
-# ディレクター
 director = Director(
     (
         ("title", globals()["TitleScene"]),

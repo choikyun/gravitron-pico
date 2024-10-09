@@ -6,7 +6,7 @@ __author__ = "Choi Gyun 2024"
 from micropython import const
 
 
-# RBG565 パレット
+# RBG565 パレット PICO-8風
 palette565 = const(
     (
         0x0000,
@@ -321,8 +321,7 @@ z_index = const(
         0,
     )
 )
-
-# 水平方向の倍率 固定小数 8bit
+# 水平方向の倍率（固定小数 8bit）
 h_ratio = const(
     (
         64,

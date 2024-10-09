@@ -3,7 +3,7 @@
 簡単なゲームライブラリ
 
 ・Director
-  シーンをスタックで管理。
+  各シーンをスタックで管理。
 
     ・Scene
       タイトル画面、 ゲーム画面 など各画面はシーンで表現。
@@ -12,7 +12,7 @@
         [描画]
         ・Stage
           BG と スプライト を描画して LCD に転送する。
-          ゲームの処理はここにまとめる。
+          ゲームの主な処理はここにまとめるとよい。
 
             ・Sprite
               画面に表示されるものはすべてスプライト。
@@ -24,7 +24,7 @@
   オブジェクト間の連携はイベント経由で行う。
 
 ・Animatior
-  数値のアニメ用
+  数値のアニメ用。
 
 [その他]
 ・SpritePool
@@ -32,7 +32,7 @@
 
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "Choi Gyun 2024"
 
 from io import open
@@ -128,6 +128,9 @@ class Sprite:
 
     Attributes:
         parent (Sprite): 親スプライト
+        stage(Stage): ステージ
+        scene(Scene): シーン
+        event(EventManager): イベントマネージャー
         chr_no (int): 画像No image_buffers に対応した番号
         name (str or int): キャラクタ識別の名前
         x (int): X座標（親からの相対座標）
@@ -161,9 +164,6 @@ class Sprite:
             z (int): Z座標 小さい順に描画
             w (int): 幅
             h (int): 高
-
-        Returns:
-            Sprite: 自分自身
         """
         self.chr_no = chr_no
         self.name = name
@@ -197,9 +197,6 @@ class Sprite:
         self.scene = self.parent.stage.scene
         self.event = self.parent.stage.event
 
-        # for sp in self.sprite_list:
-        #    sp.init_shortcuts()
-
     def show(self, frame_buffer, images, x, y):
         """フレームバッファに描画
 
@@ -231,7 +228,6 @@ class Sprite:
 
     def action(self):
         """フレーム毎のアクション"""
-
         if self.active:
             # 子スプライトのアクション
             for sp in self.sprite_list:
@@ -332,7 +328,6 @@ class Sprite:
         """入場
         初期化処理
         """
-
         self.active = True
         return self  # チェーンできるように
 
@@ -372,7 +367,7 @@ class Sprite:
 
         return (x, y)
 
-    def root(self):
+    def get_root(self):
         """ルートオブジェクトの取得"""
         sp = self
         while sp.parent != None:
@@ -412,86 +407,6 @@ class SpriteContainer(Sprite):
             # 子スプライトの描画
             for sp in self.sprite_list:
                 sp.show(frame_buffer, images, x, y)
-
-
-class BitmapSprite(Sprite):
-    """ビットマップを直接描画するスプライト（低速）
-    インデックスと同じく２倍にして表示
-    大きな画像はメモリ不足になるのでこちらを使用
-    width は 4 で割り切れること
-
-    Params:
-        bmp_no (int): キャラクタ番号
-        show_once(bool): 1回のみの描画
-    """
-
-    def __init__(
-        self, bmp_no=0, name="no_name", x=0, y=0, z=0, w=0, h=0, show_once=False
-    ):
-        super().__init__()
-        self.init_params(bmp_no, name, x, y, z, w, h)
-        self.show_once = show_once
-        if show_once:
-            self.show_count = 1
-        else:
-            self.show_count = -1
-
-    # @micropython.native
-    def show(self, frame_buffer, images, x, y):
-        """フレームバッファに描画
-        自分自身のみ描画
-        Params:
-            frame_buffer (FrameBuffer): 描画対象のバッファ(通常BG)
-            x (int): 親のX座標
-            y (int): 親のY座標
-        """
-        if self.show_count == 0:
-            return
-        if self.show_once:
-            self.show_count = 0
-
-        if self.active:
-            x += self.x
-            y += self.y
-
-            buf = frame_buffer.buf
-            bmp = images[self.chr_no]
-            w = self.w
-            w2 = w * 2
-            h = self.h
-            lcd_w = LCD_W * 2
-            start = x * 2 + y * lcd_w
-
-            idx = 0
-            for dy in range(0, h, 2):
-                pos1 = dy * lcd_w + start
-                pos2 = pos1 + lcd_w
-                for dx in range(0, w2, 8):
-                    pos_x1 = pos1 + dx
-                    pos_x2 = pos2 + dx
-
-                    c1 = bmp[idx]
-                    c2 = bmp[idx + 1]
-                    buf[pos_x1] = c1
-                    buf[pos_x1 + 1] = c2
-                    buf[pos_x1 + 2] = c1
-                    buf[pos_x1 + 3] = c2
-                    buf[pos_x2] = c1
-                    buf[pos_x2 + 1] = c2
-                    buf[pos_x2 + 2] = c1
-                    buf[pos_x2 + 3] = c2
-
-                    c1 = bmp[idx + 2]
-                    c2 = bmp[idx + 3]
-                    buf[pos_x1 + 4] = c1
-                    buf[pos_x1 + 5] = c2
-                    buf[pos_x1 + 6] = c1
-                    buf[pos_x1 + 7] = c2
-                    buf[pos_x2 + 4] = c1
-                    buf[pos_x2 + 5] = c2
-                    buf[pos_x2 + 6] = c1
-                    buf[pos_x2 + 7] = c2
-                    idx += 4
 
 
 class ShapeSprite(SpriteContainer):
@@ -642,7 +557,6 @@ class Stage(SpriteContainer):
 
     def leave(self):
         """リソースの破棄"""
-
         for sp in self.sprite_list:
             sp.leave()
 
@@ -679,7 +593,6 @@ class Stage(SpriteContainer):
 
     def release_resources(self):
         """リソースの破棄"""
-
         self.resources["images"].clear()
         self.resources["misc"].clear()
         collect()
@@ -766,7 +679,7 @@ class EventManager:
 
     Attributes:
         queue (list): イベントキュー
-        listeners (list): イベントリスナー [0]:type [1]:obj [2]:bool
+        listeners (list): イベントリスナー (type, obj, bool)
     """
 
     def __init__(self):
@@ -779,7 +692,7 @@ class EventManager:
         """イベントをポスト
 
         Params:
-            event (list): [0]:type [1]:priority [2]:delay [3]:sender [4]:optiion
+            event (list): イベント(type, priority, delay, sender, optiion)
         """
         # キューが空
         if len(self.queue) == 0:
@@ -856,7 +769,7 @@ class EventManager:
         すでにあったら追加しない
 
         Params:
-            param (list): [0]:type [1]:リスナーを持つオブジェクト [2]: 有効か
+            param (list): (type, リスナーを持つオブジェクト)
         """
         for l in self.listeners:
             if l[0] == param[0] and l[1] == param[1]:
@@ -867,7 +780,7 @@ class EventManager:
         """リスナーを削除
 
         Params:
-            param (list): [0]:type [1]:リスナーを持つオブジェクト
+            param (list): (type, リスナーを持つオブジェクト)
         """
         for i in range(len(self.listeners) - 1, -1, -1):
             if self.listeners[i][0] == param[0] and self.listeners[i][1] is param[1]:
@@ -898,7 +811,7 @@ class EventManager:
         """イベントリスナー呼び出し
 
         Params:
-            event (list): [0]:type [1]:priority [2]:delay [3]:sender [4]:optiion
+            event (list): (type, priority, delay, sender, optiion)
         """
         for listener in self.listeners:
             if event[0] == listener[0] and listener[2]:  # 有効なリスナーのみ
@@ -943,9 +856,9 @@ class Scene:
 
     def set_stage(self, stage):
         """ステージ登録"""
+        stage.scene = self
+        stage.event = self.event
         self.stage = stage
-        self.stage.scene = self
-        self.stage.event = self.event
 
     def enter(self):
         """シーン開始時実行"""
@@ -966,16 +879,11 @@ class Scene:
         t = ticks_ms()
         if ticks_diff(t, self.fps_ticks) < self.fps_interval:  # FPS
             self.active = False
-            # if self.frame_count & 10 == 0:
-            #    gc.collect()
             return
 
         self.fps_ticks = t
         self.active = True
         self.frame_count += 1
-
-        # debug
-        # print(t)
 
         # キースキャン
         self.key.scan()
@@ -1025,7 +933,7 @@ class Director:
         self.key = key
 
         # シーン間で共有する値
-        self.values = [0] * 3
+        self.values = [0] * 6
 
     def push(self, scene_name):
         """新しいシーンをプッシュ
@@ -1068,6 +976,8 @@ class Director:
 
     def get_current(self):
         """現在のシーン取得"""
+        if not self.scene_stack:
+            return None
 
         return self.scene_stack[-1]
 
@@ -1076,7 +986,7 @@ class Director:
         Params:
             scene_name (str): シーン名
         Returns:
-            Sccene or None: 見つかったシーン. 無ければ None.
+            Sccene or None: 見つかったシーン 無ければ None
         """
         for s in self.scenes:
             if s[0] == scene_name:
