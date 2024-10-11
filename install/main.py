@@ -7,6 +7,7 @@ import _thread
 from random import randint
 from utime import ticks_ms
 from machine import freq
+from gc import collect
 
 from ease import linear, inout_elastic
 from gamedata import cos_tbl, sin_tbl, atan_tbl, palette565, z_index, h_ratio
@@ -139,9 +140,9 @@ _CRASH_COUNT = const(3)  # 爆発回数 この間に回復できたらセーフ
 _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-50)
-_POWER_DAMAGE = const(-5)
-_POWER_RECOVERY = const(10)
+_POWER_OUT = const(-40)
+_POWER_DAMAGE = const(-8)
+_POWER_RECOVERY = const(15)
 
 
 ### スプライト
@@ -967,27 +968,28 @@ class View(ThreadSprite):
                 if self.speed_acc <= _MAX_DEC_SPEED_ACC:
                     self.speed_acc = _MAX_DEC_SPEED_ACC
 
+            # 左右移動（回転）
+            if key.repeat & KEY_RIGHT and self.speed != 0:
+                self.dir_angle += _ADD_DIR_ANGLE
+                if self.dir_angle >= _MAX_DIR_ANGLE:
+                    self.dir_angle = _MAX_DIR_ANGLE
+            elif key.repeat & KEY_LEFT and self.speed != 0:
+                self.dir_angle -= _ADD_DIR_ANGLE
+                if self.dir_angle <= -_MAX_DIR_ANGLE:
+                    self.dir_angle = -_MAX_DIR_ANGLE
+            else:
+                if self.dir_angle > 0:
+                    self.dir_angle -= _DEC_DIR_ANGLE  # 減衰
+                elif self.dir_angle < 0:
+                    self.dir_angle += _DEC_DIR_ANGLE
+            # 角度
+            self.dir = (self.dir + (self.dir_angle >> _ACC_FIX)) % _MAX_RAD
+
+
     def move(self):
         """移動"""
         # 重力
         self.gravity_effect(self.speed)
-
-        # 左右移動（回転）
-        if key.repeat & KEY_RIGHT and self.speed != 0:
-            self.dir_angle += _ADD_DIR_ANGLE
-            if self.dir_angle >= _MAX_DIR_ANGLE:
-                self.dir_angle = _MAX_DIR_ANGLE
-        elif key.repeat & KEY_LEFT and self.speed != 0:
-            self.dir_angle -= _ADD_DIR_ANGLE
-            if self.dir_angle <= -_MAX_DIR_ANGLE:
-                self.dir_angle = -_MAX_DIR_ANGLE
-        else:
-            if self.dir_angle > 0:
-                self.dir_angle -= _DEC_DIR_ANGLE  # 減衰
-            elif self.dir_angle < 0:
-                self.dir_angle += _DEC_DIR_ANGLE
-        # 角度
-        self.dir = (self.dir + (self.dir_angle >> _ACC_FIX)) % _MAX_RAD
 
         # 加速
         self.speed += self.speed_acc
@@ -1172,6 +1174,7 @@ class View(ThreadSprite):
 
     def load_course_data(self, num):
         """コースデータ読み込み"""
+        collect()
         data = course_datafile[num]
         f = open(data[0], "rb")
         self.course_dat = f.read()
@@ -1469,6 +1472,7 @@ class SelectCourse(SpriteContainer):
 
     def load_course(self, num):
         """コースマップ"""
+        collect()
         data = course_datafile[num]
         try:
             f = open(data[0], "rb")

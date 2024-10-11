@@ -7,6 +7,7 @@ import _thread
 from random import randint
 from utime import ticks_ms
 from machine import freq
+from gc import collect
 
 from ease import linear, inout_elastic
 from gamedata import cos_tbl, sin_tbl, atan_tbl, palette565, z_index, h_ratio
@@ -139,8 +140,8 @@ _CRASH_COUNT = const(3)  # 爆発回数 この間に回復できたらセーフ
 _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-50)
-_POWER_DAMAGE = const(-5)
+_POWER_OUT = const(-40)
+_POWER_DAMAGE = const(-8)
 _POWER_RECOVERY = const(15)
 
 
@@ -1173,6 +1174,7 @@ class View(ThreadSprite):
 
     def load_course_data(self, num):
         """コースデータ読み込み"""
+        collect()
         data = course_datafile[num]
         f = open(data[0], "rb")
         self.course_dat = f.read()
@@ -1470,6 +1472,7 @@ class SelectCourse(SpriteContainer):
 
     def load_course(self, num):
         """コースマップ"""
+        collect()
         data = course_datafile[num]
         try:
             f = open(data[0], "rb")
