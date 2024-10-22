@@ -1,6 +1,6 @@
 """GRAVITRON"""
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Choi Gyun 2024"
 
 import _thread
@@ -10,7 +10,7 @@ from machine import freq
 from gc import collect
 
 from ease import linear, inout_elastic
-from gamedata import cos_tbl, sin_tbl, atan_tbl, palette565, z_index, h_ratio
+from gamedata import cos_tbl, sin_tbl, atan_tbl, z_scale_tbl, h_scale_tbl, pal_tbl
 from picolcd114 import (
     KEY_A,
     KEY_B,
@@ -83,13 +83,12 @@ _COMM_EXIT = const(3)  # スレッド終了
 
 # インデックス
 _COL_INDEX_OUT = const(1)  # コース外
-_COL_INDEX_DAMAGE = const(8)  # ダメージ
-_COL_INDEX_RECOVERY = const(11)
-_COL_INDEX_ACC = const(10)  # 加速
-_COL_INDEX_LAP = const(14)  # ラップ更新
+_COL_INDEX_DAMAGE = const(3)  # ダメージ
+_COL_INDEX_ACC = const(4)  # 加速
+_COL_INDEX_RECOVERY = const(5)  # 回復
+_COL_INDEX_LAP = const(6)  # ラップ更新
 # 565
 _COL_BG = const(0)  # BGカラー
-_COL_OUT = const(0x194A)  # コース外
 _COL_MINIMAP = const(0x0726)  # ミニマップ
 _COL_MARKER = const(0xF809)  # ミニマップ上のマーカー
 _COL_POWER_1 = const(0x0726)  # パワー
@@ -141,7 +140,7 @@ _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
 _POWER_OUT = const(-40)
-_POWER_DAMAGE = const(-8)
+_POWER_DAMAGE = const(-6)
 _POWER_RECOVERY = const(15)
 
 
@@ -159,8 +158,9 @@ _SHIP_Y = const(103)
 # 爆風
 _BOMB_X = const(-32)
 _BOMB_Y = const(-16)
-_BOMB_X_RANGE = const(32)
+_BOMB_X_RANGE = const(32)  # X方向範囲
 _BOMB_Y_RANGE = const(0)
+_BOMB_NUM = const(3)  # 爆風の数
 
 # ミニマップ
 _MINIMAP_INTERVAL = const(5)  # 点滅インターバル
@@ -266,14 +266,10 @@ def cos_sin(angle):
     """cos, sin 取得"""
 
     # 三角関数テーブル
-    _s = 1
     if angle >= _H_RAD:
-        _s = -1
-        angle -= _H_RAD
-    cos = cos_tbl[angle] * _s
-    sin = sin_tbl[angle] * _s
-
-    return (cos, sin)
+        return (cos_tbl[angle - _H_RAD] * -1, sin_tbl[angle - _H_RAD] * -1)
+    else:
+        return (cos_tbl[angle], sin_tbl[angle])
 
 
 def atan(x0, y0, x1, y1):
@@ -358,18 +354,16 @@ def draw_view_v3(cmd):
     _, vx, vz, cos, sin, field, buff = cmd
 
     buff_rect = buff.rect  # メソッドを変数に代入しておく
-
     # ビュー部分(画面の下半分)クリア
     buff_rect(_SCREEN_X, _SCREEN_Y, 238, 60, _COL_BG, True)
 
-    pal = palette565  # パレット
     scr_y = _SCREEN_Y  # スクリーン描画開始Y
-
-    for z, h in zip(z_index, h_ratio):
+    for z, h, pal in zip(z_scale_tbl, h_scale_tbl, pal_tbl):
         zcos = z * cos  # z座標（奥行き）の cos, sin
         zsin = z * sin
         scr_x = _SCREEN_X  # スクリーンの描画開始X座標
         pw = _PIXEL_W  # ピクセル幅
+        col_out = pal[_COL_INDEX_OUT]
 
         # 最初のピクセルを取得
         _y = _START_PX // h  # -39 * 256 // h
@@ -377,7 +371,7 @@ def draw_view_v3(cmd):
         # pos_y はあらかじめ64倍
         pos_y = ((((zsin + _y * cos) >> _FIX) + vz) << 2) & 0xFFC0
         if pos_x < 0 or pos_x >= _COURSE_DATA_W or pos_y < 0 or pos_y >= 2048:
-            prev_col = _COL_OUT
+            prev_col = col_out
         else:
             prev_col = pal[field[pos_x + pos_y]]
 
@@ -387,7 +381,7 @@ def draw_view_v3(cmd):
             pos_x = (((zcos - _y * sin) >> _FIX) + vx) >> _COURSE_RATIO
             pos_y = ((((zsin + _y * cos) >> _FIX) + vz) << 2) & 0xFFC0
             if pos_x < 0 or pos_x >= _COURSE_DATA_W or pos_y < 0 or pos_y >= 2048:
-                col = _COL_OUT
+                col = col_out
             else:
                 col = pal[field[pos_x + pos_y]]
 
@@ -572,8 +566,7 @@ class ThreadStage(Stage):
 
         # スプライト
         self.ship = Ship()  # 自機
-        self.add_child(self.ship)
-        self.ship.enter()
+        self.add_child(self.ship).enter()
         self.power = Power()  # パワー
         self.add_child(self.power)
         self.map = Minimap()  # ミニマップ
@@ -585,8 +578,7 @@ class ThreadStage(Stage):
         self.pause_mes = PauseMes()  # ポーズ中メッセージ
         self.add_child(self.pause_mes)
         self.view = View()  # 疑似3Dビュー
-        self.add_child(self.view)
-        self.view.enter()
+        self.add_child(self.view).enter()
 
         self.event.add_listener([_EV_FINISH, self, True])
         self.event.add_listener([EV_ENTER_FRAME, self, True])
@@ -628,6 +620,7 @@ class ThreadStage(Stage):
 
     def start_thread(self):
         """描画スレッド開始"""
+        collect()
         _thread.start_new_thread(thread_loop, (self.thread_data, self.lock))
 
     def stop_thread(self):
@@ -781,7 +774,7 @@ class Crash(ThreadSpriteContainer):
         super().enter()
 
         # 爆発スプライト
-        for _ in range(2):
+        for _ in range(_BOMB_NUM):
             b = Bomb()
             self.add_child(b).enter()
             self.bombs.append(b)
@@ -797,7 +790,7 @@ class Crash(ThreadSpriteContainer):
             if self.interval == 0:
                 self.interval = 16
 
-                for i in range(2):
+                for i in range(_BOMB_NUM):
                     self.bombs[i].reset()  # 次の爆風
 
                 self.count -= 1
@@ -817,7 +810,7 @@ class Crash(ThreadSpriteContainer):
         """爆発開始"""
         self.interval = 16  # 1回分の爆発のインターバル
         self.count = _CRASH_COUNT  # 爆発回数
-        for i in range(2):
+        for i in range(_BOMB_NUM):
             self.bombs[i].reset()
 
         self.active = True
@@ -841,7 +834,15 @@ class Bomb(ThreadSprite):
             _SP_H,
         )
         # アニメ
-        self.init_frame_params(4, 4)
+        self.init_frame_params(4, 3)
+
+    def show(self, frame_buffer, images, x, y):
+        if self.active:
+            if self.stage.status == _GAME_PLAY:
+                x += randint(-2, 2)
+                y += randint(-2, 2)
+
+            super().show(frame_buffer, images, x, y)
 
     def reset(self):
         """リセット"""
@@ -984,7 +985,6 @@ class View(ThreadSprite):
                     self.dir_angle += _DEC_DIR_ANGLE
             # 角度
             self.dir = (self.dir + (self.dir_angle >> _ACC_FIX)) % _MAX_RAD
-
 
     def move(self):
         """移動"""
@@ -1174,17 +1174,23 @@ class View(ThreadSprite):
 
     def load_course_data(self, num):
         """コースデータ読み込み"""
-        collect()
         data = course_datafile[num]
-        f = open(data[0], "rb")
-        self.course_dat = f.read()
-        f.close()
-
         self.vx = data[1][0] << _FIX
         self.vz = data[1][1] << _FIX
         self.dir = data[1][2]
         self.g_src = data[2]  # 重力発生源
         self.lap = data[3]  # ゴール範囲
+
+        collect()
+        try:
+            f = open(data[0], "rb")
+        except:
+            print(":‑( Load Course Error.")
+            self.course_dat = [0] * (_COURSE_DATA_W * _COURSE_DATA_H)
+            return
+
+        self.course_dat = f.read()
+        f.close()
 
 
 class Minimap(ThreadSpriteContainer):
@@ -1472,15 +1478,18 @@ class SelectCourse(SpriteContainer):
 
     def load_course(self, num):
         """コースマップ"""
-        collect()
         data = course_datafile[num]
+
+        collect()
         try:
             f = open(data[0], "rb")
-            self.course = f.read()
-            f.close()
         except:
-            self.course = None
             print(":‑( Error Load Course Data.")
+            self.course = [0] * (_COURSE_DATA_W * _COURSE_DATA_H)
+            return
+
+        self.course = f.read()
+        f.close()
 
     def show(self, frame_buffer, images, x, y):
         if self.active:

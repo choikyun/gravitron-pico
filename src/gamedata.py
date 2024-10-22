@@ -1,6 +1,6 @@
 """ GRAVITRON PICO"""
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Choi Gyun 2024"
 
 from micropython import const
@@ -25,6 +25,83 @@ palette565 = const(
         0x83B3,
         0xFBB5,
         0xFE75,
+    )
+)
+
+# コース用 565パレット 奥に行くほど明るくなる
+c_pal0 = const(
+    (
+        0x0000,
+        0x194A,
+        0xFF9D,
+        0xF809,
+        0xFF64,
+        0x0726,
+        0xFBB5,
+        0xFE75,
+    )
+)
+c_pal1 = const(
+    (
+        0x0861,
+        0x29CC,
+        0xFFFE,
+        0xF86B,
+        0xFFC6,
+        0x0F88,
+        0xFC36,
+        0xFED7,
+    )
+)
+c_pal2 = const(
+    (
+        0x2945,
+        0x428F,
+        0xFFFF,
+        0xF94E,
+        0xFFE9,
+        0x2FEB,
+        0xFCFA,
+        0xFFBA,
+    )
+)
+c_pal3 = const(
+    (
+        0x528A,
+        0x6BD4,
+        0xFFFF,
+        0xFA93,
+        0xFFEE,
+        0x57F0,
+        0xFE3F,
+        0xFFFF,
+    )
+)
+
+
+# コース用パレットリスト
+pal_tbl = const(
+    (
+        c_pal3,
+        c_pal3,
+        c_pal2,
+        c_pal2,
+        c_pal2,
+        c_pal1,
+        c_pal1,
+        c_pal1,
+        c_pal1,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
+        c_pal0,
     )
 )
 
@@ -296,8 +373,8 @@ cos_tbl = const(
     )
 )
 
-# Z方向の倍率
-z_index = const(
+# 奥行きの拡縮
+z_scale_tbl = const(
     (
         171,
         110,
@@ -321,8 +398,9 @@ z_index = const(
         0,
     )
 )
-# 水平方向の倍率（固定小数 8bit）
-h_ratio = const(
+
+# 水平方向の拡縮（8bit固定小数）
+h_scale_tbl = const(
     (
         64,
         94,

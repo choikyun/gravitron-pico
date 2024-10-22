@@ -79,11 +79,12 @@ def load_status(filename):
     """ステータスロード"""
     try:
         f = open(filename, "r")
-        d = load(f)
-        f.close
     except:
-        d = None
-        print(":-( Error Load Status.")
+        print(":-( File open error.")
+        return None
+
+    d = load(f)
+    f.close
     return d
 
 
@@ -91,10 +92,13 @@ def save_status(d, filename):
     """ステータスセーブ"""
     try:
         f = open(filename, "w")
-        dump(d, f)
-        f.close
     except:
-        print(":-( Error Save Status.")
+        print(":-( File open error.")
+        return
+
+    dump(d, f)
+    f.close
+    return
 
 
 def create_image_buffer(palette, image_dat, w, h):
@@ -559,9 +563,6 @@ class Stage(SpriteContainer):
         """リソースの破棄"""
         for sp in self.sprite_list:
             sp.leave()
-
-        del self.scene
-        del self.event
 
         # リソースの破棄
         self.release_resources()

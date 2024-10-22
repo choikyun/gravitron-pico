@@ -9,39 +9,38 @@
 """
 
 from PIL import Image
-import sys
 import os
 import glob
 
-IMG_FOLDER_PATH = "./png/course/*" # pngのあるフォルダ
-SAVE_FILE_PATH = "./out/" # 書き出し先
+IMG_FOLDER_PATH = "./png/course/*"  # pngのあるフォルダ
+SAVE_FILE_PATH = "./out/"  # 書き出し先
 
 # フルカラーパレット
-# PICO-8 16色
-pallet888 = [
+# PICO-8 16色中8色
+palette888 = (
     0x000000,
     0x1D2B53,
-    0x7E2553,
-    0x008751,
-    0xAB5236,
-    0x5F574F,
-    0xC2C3C7,
     0xFFF1E8,
     0xFF004D,
-    0xFFA300,
     0xFFEC27,
     0x00E436,
-    0x29ADFF,
-    0x83769C,
     0xFF77A8,
     0xFFCCAA,
-]
+)
+
+# どのくらい明るくなるか
+pal_vals = (0, 15, 40, 80)
+
 
 def main():
-    print("フルカラー(RGB 24bit)PNG から コースデータ を作成 ver 1.00\n")
+    print("フルカラー(RGB 888)PNG から コースデータ を作成 ver 1.00\n")
     print("画像サイズは 64pixel * 32pixel です。")
-    print("1pixel を 1byte(8bit) のインデックスにします。 パレットは16色です。\n\n")
+    print(
+        "1pixel を 1byte(8bit) のインデックスにします。 パレットはRGB565で出力します。 \n\n"
+    )
 
+    # コース用 565パレット作成
+    create_palette565()
 
     img_list = sorted(glob.glob(IMG_FOLDER_PATH))  # 画像リストを取得
 
@@ -49,7 +48,7 @@ def main():
     if len(img_list) == 0:
         return print("No image File!")
 
-    for fn in img_list:        
+    for fn in img_list:
         print("processing... " + fn)
 
         # 画像ファイル読み込み
@@ -58,7 +57,7 @@ def main():
         name = os.path.splitext(os.path.basename(fn))[0]
 
         # 画像の色配列情報のバイナリを取得して書き込む
-        f = open(SAVE_FILE_PATH + name + ".dat", 'wb')
+        f = open(SAVE_FILE_PATH + name + ".dat", "wb")
         image_bin = outputColorPixel(width, height, image)
         f.write(image_bin)
         f.close()
@@ -69,9 +68,8 @@ def main():
 # 1ピクセルを1バイトに変換
 def conv(rgb):
     col = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
-    index = pallet888.index(col)
 
-    return index
+    return palette888.index(col)
 
 
 def outputColorPixel(width, height, image):
@@ -84,6 +82,33 @@ def outputColorPixel(width, height, image):
             result.append(conv(pixel))
 
     return result
+
+
+# コースデータ用のパレット作成
+def create_palette565():
+    f = open(SAVE_FILE_PATH + "pals565.txt", "w")
+    print("processing... palette RGB888 to RGB565")
+
+    for i, v in enumerate(pal_vals):
+        f.write("# palette RGB565 {:0>2d}\n".format(i))
+
+        for p in palette888:
+            r5 = int(min(((p >> 16) & 0xFF) + v, 255))
+            r5 >>= 3
+
+            g6 = int(min(((p >> 8) & 0xFF) + v, 255))
+            g6 >>= 2
+
+            b5 = int(min((p & 0xFF) + v, 255))
+            b5 >>= 3
+
+            rgb565 = (r5 << 11) | (g6 << 5) | b5
+            f.write("0x{:0>4x},\n".format(rgb565))
+
+        f.write("\n")
+
+    f.close()
+    print("saved: " + SAVE_FILE_PATH + "pals565.txt")
 
 
 if __name__ == "__main__":

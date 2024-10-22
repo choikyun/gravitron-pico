@@ -35,7 +35,7 @@ SAVE_FILE_PATH = "./out/"
 
 # フルカラーパレット
 # PICO-8 16色
-pallet888 = (
+palette888 = (
     0x000000,
     0x1D2B53,
     0x7E2553,
@@ -119,11 +119,11 @@ def main():
 # 2ピクセルを1バイトに変換
 def conv4(rgb):
     col = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
-    index = pallet888.index(col)
+    index = palette888.index(col)
     out = index
 
     col = (rgb[3] << 16) | (rgb[4] << 8) | rgb[5]
-    index = pallet888.index(col)
+    index = palette888.index(col)
     out |= index << 4
 
     return out

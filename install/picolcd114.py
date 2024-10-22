@@ -1,4 +1,4 @@
-""" 1.14inch LCD Display Module for Raspberry Pi Pico の制御
+""" 1.14inch LCD Display Module for Raspberry Pi Pico
 
 https://www.waveshare.com/pico-lcd-1.14.htm
 """
@@ -41,10 +41,9 @@ class LCD114(FrameBuffer):
         self.rst = Pin(_RST, Pin.OUT)
 
         self.cs(1)
-        # ボーレートは適当
         self.spi = SPI(
             1,
-            100_000_000,
+            125 * 1000 * 1000,
             polarity=0,
             phase=0,
             sck=Pin(_SCK),
@@ -93,7 +92,7 @@ class LCD114(FrameBuffer):
 
         self.write_cmd(0xB0)  # RAM Control
         self.write_data(0x00)
-        self.write_data(0xF8)
+        self.write_data(0xF8) #  little endian
 
         self.write_cmd(0xBB)  # VCOM Setting
         self.write_data(0x19)
@@ -177,7 +176,7 @@ class InputKey:
 
     def scan(self):
         """キースキャン
-        repeat は押しっぱなし, push は押したまま.
+        repeat: 連続キー入力 push: 1回のみ
         """
         self.push = ~self.repeat
         self.repeat = 0
