@@ -29,7 +29,7 @@ palette888 = (
 )
 
 # どのくらい明るくなるか
-pal_vals = (0, 15, 40, 80)
+pal_vals = (0, 3, 6, 9)
 
 
 def main():
@@ -93,14 +93,17 @@ def create_palette565():
         f.write("# palette RGB565 {:0>2d}\n".format(i))
 
         for p in palette888:
-            r5 = int(min(((p >> 16) & 0xFF) + v, 255))
+            r5 = (p >> 16) & 0xFF
             r5 >>= 3
+            r5 = min(r5 + v, 31)
 
-            g6 = int(min(((p >> 8) & 0xFF) + v, 255))
+            g6 = (p >> 8) & 0xFF
             g6 >>= 2
+            g6 = min(g6 + v, 63)
 
-            b5 = int(min((p & 0xFF) + v, 255))
+            b5 = (p & 0xFF)
             b5 >>= 3
+            b5 = min(b5 + v, 31)
 
             rgb565 = (r5 << 11) | (g6 << 5) | b5
             f.write("0x{:0>4x},\n".format(rgb565))

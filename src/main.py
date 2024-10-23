@@ -140,8 +140,8 @@ _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
 _POWER_OUT = const(-40)
-_POWER_DAMAGE = const(-6)
-_POWER_RECOVERY = const(15)
+_POWER_DAMAGE = const(-4)
+_POWER_RECOVERY = const(20)
 
 
 ### スプライト
@@ -925,11 +925,18 @@ class View(ThreadSprite):
     def init_bg(self):
         """背景"""
         # 手抜きBG LINEで表現
-        lcd.rect(1, 42, 238, 10, 0x194A, True)
-        lcd.rect(1, 52, 238, 8, 0x83B3, True)
-        lcd.rect(1, 60, 238, 6, 0xFE75, True)
-        lcd.rect(1, 66, 238, 6, 0xFF9D, True)
-        lcd.rect(1, 70, 238, 2, 0x2D7F, True)
+        if randint(0, 1) == 0:
+            lcd.rect(1, 43, 238, 10, 0x194A, True)
+            lcd.rect(1, 53, 238, 8, 0x83B3, True)
+            lcd.rect(1, 59, 238, 6, 0xFE75, True)
+            lcd.rect(1, 65, 238, 6, 0xFF9D, True)
+            lcd.rect(1, 71, 238, 2, 0x2D7F, True)
+        else:
+            lcd.rect(1, 43, 238, 10, 0x2D7F, True)
+            lcd.rect(1, 53, 238, 8, 0xFF9D, True)
+            lcd.rect(1, 59, 238, 6, 0xC618, True)
+            lcd.rect(1, 65, 238, 6, 0xFD00, True)
+            lcd.rect(1, 71, 238, 2, 0xFF64, True)
 
     def ev_enter_frame(self, type, sender, key):
         """イベント:毎フレーム"""

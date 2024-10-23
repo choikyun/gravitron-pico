@@ -43,38 +43,38 @@ c_pal0 = const(
 )
 c_pal1 = const(
     (
-        0x0861,
-        0x29CC,
-        0xFFFE,
-        0xF86B,
-        0xFFC6,
-        0x0F88,
-        0xFC36,
-        0xFED7,
+        0x1863,
+        0x31AD,
+        0xFFFF,
+        0xF86C,
+        0xFFC7,
+        0x1F89,
+        0xFC18,
+        0xFED8,
     )
 )
 c_pal2 = const(
     (
-        0x2945,
-        0x428F,
+        0x30C6,
+        0x4A10,
         0xFFFF,
-        0xF94E,
-        0xFFE9,
-        0x2FEB,
-        0xFCFA,
-        0xFFBA,
+        0xF8CF,
+        0xFFEA,
+        0x37EC,
+        0xFC7B,
+        0xFF3B,
     )
 )
 c_pal3 = const(
     (
-        0x528A,
-        0x6BD4,
+        0x4929,
+        0x6273,
         0xFFFF,
-        0xFA93,
-        0xFFEE,
-        0x57F0,
-        0xFE3F,
-        0xFFFF,
+        0xF932,
+        0xFFED,
+        0x4FEF,
+        0xFCDE,
+        0xFF9E,
     )
 )
 
