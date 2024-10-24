@@ -78,12 +78,12 @@ c_pal3 = const(
     )
 )
 
-
 # コース用パレットリスト
 pal_tbl = const(
     (
         c_pal3,
         c_pal3,
+        c_pal3,
         c_pal2,
         c_pal2,
         c_pal2,
@@ -91,7 +91,6 @@ pal_tbl = const(
         c_pal1,
         c_pal1,
         c_pal1,
-        c_pal0,
         c_pal0,
         c_pal0,
         c_pal0,

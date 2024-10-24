@@ -10,7 +10,14 @@ from machine import freq
 from gc import collect
 
 from ease import linear, inout_elastic
-from gamedata import cos_tbl, sin_tbl, atan_tbl, z_scale_tbl, h_scale_tbl, pal_tbl
+from gamedata import (
+    cos_tbl,
+    sin_tbl,
+    atan_tbl,
+    z_scale_tbl,
+    h_scale_tbl,
+    pal_tbl,
+)
 from picolcd114 import (
     KEY_A,
     KEY_B,
@@ -98,7 +105,6 @@ _COL_POWER_FLASH = const(0xFF9D)
 _COL_POWER_OFF = const(0x042A)
 
 _COL_ALPHA = const(0x0726)  # スプライト透過色
-_COL_TITLEMAP1 = const(0x0726)  # タイトル画面のコースマップ
 
 ### ゲームステータス
 
@@ -139,7 +145,7 @@ _CRASH_COUNT = const(3)  # 爆発回数 この間に回復できたらセーフ
 _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-40)
+_POWER_OUT = const(-60)
 _POWER_DAMAGE = const(-4)
 _POWER_RECOVERY = const(20)
 
@@ -203,7 +209,7 @@ _CHR_LAPNUM = const(18)  # <=20
 _CHR_LAP = const(22)
 _CHR_TIME = const(23)
 _CHR_PAUSE_MES = const(24)
-_CHR_READY = const(25)  # <=8
+_CHR_READY = const(25)  # <=28
 
 # タイトル
 _CHR_TITLE = const(0)  # <=6
@@ -720,9 +726,13 @@ class Ship(ThreadSprite):
 
     def show(self, frame_buffer, images, x, y):
         # 状態異常 振動
-        if self.shake and self.stage.status == _GAME_PLAY:
-            x += randint(-2, 2)
-            y += randint(-2, 2)
+        if self.stage.status == _GAME_PLAY:
+            if self.is_crash:
+                x += randint(-8, 8)
+                y += randint(-8, 8)
+            elif self.shake:
+                x += randint(-2, 2)
+                y += randint(-2, 2)
 
         super().show(frame_buffer, images, x, y)
 
@@ -924,19 +934,12 @@ class View(ThreadSprite):
 
     def init_bg(self):
         """背景"""
-        # 手抜きBG LINEで表現
-        if randint(0, 1) == 0:
-            lcd.rect(1, 43, 238, 10, 0x194A, True)
-            lcd.rect(1, 53, 238, 8, 0x83B3, True)
-            lcd.rect(1, 59, 238, 6, 0xFE75, True)
-            lcd.rect(1, 65, 238, 6, 0xFF9D, True)
-            lcd.rect(1, 71, 238, 2, 0x2D7F, True)
-        else:
-            lcd.rect(1, 43, 238, 10, 0x2D7F, True)
-            lcd.rect(1, 53, 238, 8, 0xFF9D, True)
-            lcd.rect(1, 59, 238, 6, 0xC618, True)
-            lcd.rect(1, 65, 238, 6, 0xFD00, True)
-            lcd.rect(1, 71, 238, 2, 0xFF64, True)
+        hs = (10, 8, 6, 4, 4)
+        cols = (0x194A, 0x83B3, 0xFE75, 0xFF9D, 0x2D7F)
+        y = 43
+        for h, c in zip(hs, cols):
+            lcd.rect(2, y, 238, h, c, True)
+            y += h
 
     def ev_enter_frame(self, type, sender, key):
         """イベント:毎フレーム"""
@@ -1232,7 +1235,6 @@ class Minimap(ThreadSpriteContainer):
 
     def init_minimap(self, course, vx, vz):
         """コースデータを描画"""
-
         i = 0
         _x = self.x
         _w = _x + _COURSE_DATA_W
@@ -1245,7 +1247,7 @@ class Minimap(ThreadSpriteContainer):
                 i += 1
                 if p == _COL_INDEX_OUT:
                     continue
-                col = _COL_MINIMAP
+                col = 0x0726
                 lcd_pixel(x, y, col)
 
         self.prev[0] = vx  # 前回の座標
@@ -1499,6 +1501,8 @@ class SelectCourse(SpriteContainer):
         f.close()
 
     def show(self, frame_buffer, images, x, y):
+        pal = (0x0726, 0x4FEF)
+
         if self.active:
 
             lcd.line(0, 56, 239, 56, 0xFD00)
@@ -1507,9 +1511,10 @@ class SelectCourse(SpriteContainer):
             if self.course is not None:
                 _x = x + self.x
                 _y = y + self.y
-                lcd.rect(_x - 4, _y - 4, 72, 40, _COL_TITLEMAP1)
+                lcd.rect(_x - 4, _y - 4, 72, 40, pal[0])
 
                 i = 0
+                pat = 0
                 _w = _x + _COURSE_DATA_W
                 _h = _y + _COURSE_DATA_H
                 course = self.course
@@ -1521,8 +1526,9 @@ class SelectCourse(SpriteContainer):
                         if p == _COL_INDEX_OUT:
                             continue
                         else:
-                            col = _COL_TITLEMAP1
+                            col = pal[pat]
                         lcd_pixel(px, py, col)
+                    pat = (pat + 1) & 1
 
             super().show(frame_buffer, images, x, y)
 
