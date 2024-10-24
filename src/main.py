@@ -728,8 +728,8 @@ class Ship(ThreadSprite):
         # 状態異常 振動
         if self.stage.status == _GAME_PLAY:
             if self.is_crash:
-                x += randint(-8, 8)
-                y += randint(-8, 8)
+                x += randint(-4, 4)
+                y += randint(-4, 4)
             elif self.shake:
                 x += randint(-2, 2)
                 y += randint(-2, 2)
@@ -845,14 +845,6 @@ class Bomb(ThreadSprite):
         )
         # アニメ
         self.init_frame_params(4, 3)
-
-    def show(self, frame_buffer, images, x, y):
-        if self.active:
-            if self.stage.status == _GAME_PLAY:
-                x += randint(-2, 2)
-                y += randint(-2, 2)
-
-            super().show(frame_buffer, images, x, y)
 
     def reset(self):
         """リセット"""
