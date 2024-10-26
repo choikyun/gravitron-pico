@@ -43,38 +43,38 @@ c_pal0 = const(
 )
 c_pal1 = const(
     (
-        0x1863,
-        0x31AD,
+        0x18E3,
+        0x3A4E,
         0xFFFF,
-        0xF86C,
-        0xFFC7,
-        0x1F89,
-        0xFC18,
-        0xFED8,
+        0xF8ED,
+        0xFFE7,
+        0x0F68,
+        0xFC57,
+        0xFF17,
     )
 )
 c_pal2 = const(
     (
-        0x30C6,
-        0x4A10,
+        0x39E7,
+        0x5B31,
         0xFFFF,
-        0xF8CF,
-        0xFFEA,
-        0x37EC,
-        0xFC7B,
-        0xFF3B,
+        0xF98F,
+        0xFFE9,
+        0x17C9,
+        0xFCFA,
+        0xFFBA,
     )
 )
 c_pal3 = const(
     (
-        0x4929,
-        0x6273,
+        0x9492,
+        0x7435,
         0xFFFF,
-        0xF932,
-        0xFFED,
-        0x4FEF,
-        0xFCDE,
-        0xFF9E,
+        0xFA32,
+        0xFFEC,
+        0x1FEA,
+        0xFD9C,
+        0xFFFC,
     )
 )
 
@@ -83,7 +83,6 @@ pal_tbl = const(
     (
         c_pal3,
         c_pal3,
-        c_pal3,
         c_pal2,
         c_pal2,
         c_pal2,
@@ -91,6 +90,7 @@ pal_tbl = const(
         c_pal1,
         c_pal1,
         c_pal1,
+        c_pal0,
         c_pal0,
         c_pal0,
         c_pal0,

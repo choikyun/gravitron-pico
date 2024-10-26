@@ -28,8 +28,42 @@ palette888 = (
     0xFFCCAA,
 )
 
-# どのくらい明るくなるか
-pal_vals = (0, 3, 6, 9)
+# 手動で調整したパレット
+palette888_2 = (
+    0x1E1E1E,
+    0x3B4971,
+    0xFFFFFC,
+    0xFF1E6B,
+    0xFFFF3B,
+    0x0AEE40,
+    0xFF8BBC,
+    0xFFE0BE,
+)
+palette888_3 = (
+    0x3C3C3C,
+    0x59678F,
+    0xFFFFFF,
+    0xFF327F,
+    0xFFFF4F,
+    0x14F84A,
+    0xFF9FD0,
+    0xFFF4D2,
+)
+palette888_4 = (
+    0x909090,
+    0x7785AD,
+    0xFFFFFF,
+    0xFF4693,
+    0xFFFF63,
+    0x1EFF54,
+    0xFFB3E4,
+    0xFFFFE6,
+)
+
+pals = (palette888, palette888_2, palette888_3, palette888_4)
+
+# 一律で自動調整
+pal_vals = (0, 20, 40, 60)
 
 
 def main():
@@ -39,8 +73,11 @@ def main():
         "1pixel を 1byte(8bit) のインデックスにします。 パレットはRGB565で出力します。 \n\n"
     )
 
-    # コース用 565パレット作成
-    create_palette565()
+    ### コース用 565パレット作成
+    # 手動で調整したパレット
+    conv_palette565()
+    # 自動で調整したパレット
+    # create_palette565()
 
     img_list = sorted(glob.glob(IMG_FOLDER_PATH))  # 画像リストを取得
 
@@ -84,26 +121,49 @@ def outputColorPixel(width, height, image):
     return result
 
 
-# コースデータ用のパレット作成
-def create_palette565():
-    f = open(SAVE_FILE_PATH + "pals565.txt", "w")
+def conv_palette565():
+    f = open(SAVE_FILE_PATH + "conv_pals565.txt", "w")
     print("processing... palette RGB888 to RGB565")
 
-    for i, v in enumerate(pal_vals):
-        f.write("# palette RGB565 {:0>2d}\n".format(i))
+    for i, pal in enumerate(pals):
+        f.write("# converte palette RGB565 {:0>2d}\n".format(i))
 
-        for p in palette888:
+        for p in pal:
+
             r5 = (p >> 16) & 0xFF
             r5 >>= 3
-            r5 = min(r5 + v, 31)
 
             g6 = (p >> 8) & 0xFF
             g6 >>= 2
-            g6 = min(g6 + v, 63)
 
-            b5 = (p & 0xFF)
+            b5 = p & 0xFF
             b5 >>= 3
-            b5 = min(b5 + v, 31)
+
+            rgb565 = (r5 << 11) | (g6 << 5) | b5
+            f.write("0x{:0>4x},\n".format(rgb565))
+
+        f.write("\n")
+    f.close()
+    print("saved: " + SAVE_FILE_PATH + "conv_pals565.txt")
+
+
+# コースデータ用のパレット作成
+def create_palette565():
+    f = open(SAVE_FILE_PATH + "create_pals565.txt", "w")
+    print("processing... palette RGB888 to RGB565")
+
+    for i, v in enumerate(pal_vals):
+        f.write("# create palette RGB565 {:0>2d}\n".format(i))
+
+        for p in palette888:
+            r5 = min(((p >> 16) & 0xFF) + v, 255)
+            r5 >>= 3
+
+            g6 = min(((p >> 8) & 0xFF) + v, 255)
+            g6 >>= 2
+
+            b5 = min((p & 0xFF) + v, 255)
+            b5 >>= 3
 
             rgb565 = (r5 << 11) | (g6 << 5) | b5
             f.write("0x{:0>4x},\n".format(rgb565))
@@ -111,7 +171,7 @@ def create_palette565():
         f.write("\n")
 
     f.close()
-    print("saved: " + SAVE_FILE_PATH + "pals565.txt")
+    print("saved: " + SAVE_FILE_PATH + "create_pals565.txt")
 
 
 if __name__ == "__main__":

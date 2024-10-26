@@ -145,7 +145,7 @@ _CRASH_COUNT = const(3)  # 爆発回数 この間に回復できたらセーフ
 _POWER_FIX = const(6)
 _MAX_POWER = const(240 * _POWER_FIX)
 
-_POWER_OUT = const(-60)
+_POWER_OUT = const(-50)
 _POWER_DAMAGE = const(-4)
 _POWER_RECOVERY = const(20)
 
@@ -927,10 +927,10 @@ class View(ThreadSprite):
     def init_bg(self):
         """背景"""
         hs = (10, 8, 6, 4, 4)
-        cols = (0x194A, 0x83B3, 0xFE75, 0xFF9D, 0x2D7F)
+        col =(0x194A, 0x83B3, 0xFE75, 0xFF9D, 0x2D7F)
         y = 43
-        for h, c in zip(hs, cols):
-            lcd.rect(2, y, 238, h, c, True)
+        for h, c in zip(hs, col):
+            lcd.rect(1, y, 237, h, c, True)
             y += h
 
     def ev_enter_frame(self, type, sender, key):
@@ -1053,7 +1053,7 @@ class View(ThreadSprite):
                 ]
             )
             self.stage.ship.end_burst()
-            self.stage.ship.start_shake()  # 振動
+            self.stage.ship.start_shake()
             return
 
         pixel = self.course_dat[x + z * _COURSE_DATA_W]
@@ -1070,7 +1070,7 @@ class View(ThreadSprite):
                 ]
             )
             self.stage.ship.end_burst()
-            self.stage.ship.start_shake()  # 振動
+            self.stage.ship.start_shake()
         # ダメージレーン
         elif pixel == _COL_INDEX_DAMAGE:
             self.event.post(
@@ -1082,7 +1082,7 @@ class View(ThreadSprite):
                     _POWER_DAMAGE,
                 ]
             )
-            self.stage.ship.start_shake()  # 振動
+            self.stage.ship.start_shake()
         # 回復レーン
         elif pixel == _COL_INDEX_RECOVERY:
             self.event.post(
@@ -1096,7 +1096,7 @@ class View(ThreadSprite):
             )
         # 加速バー
         elif pixel == _COL_INDEX_ACC:
-            self.speed_limit = _MAX_LIMIT_SPEED  # バースト
+            self.speed_limit = _MAX_LIMIT_SPEED  # バースト状態
             self.speed = _MAX_LIMIT_SPEED
             self.stage.ship.start_burst()
             self.event.post(
@@ -1771,8 +1771,9 @@ class Lap(ThreadSpriteContainer):
 
     def show(self, frame_buffer, images, x, y):
         if self.active:
-            ### 描画スレッドに送らない
+            # 描画スレッドに送らない
             if self.show_once > 0:
+
                 x += self.x
                 y += self.y
 
