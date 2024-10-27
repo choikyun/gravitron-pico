@@ -4,6 +4,7 @@ __version__ = "1.0.1"
 __author__ = "Choi Gyun 2024"
 
 from micropython import const
+from array import array
 
 
 # RBG565 パレット PICO-8風
@@ -106,8 +107,9 @@ pal_tbl = const(
 
 # サイン・コサインテーブル
 # 半周分
-sin_tbl = const(
-    (
+sin_tbl = array(
+    "i",
+    [
         0,
         25,
         50,
@@ -236,11 +238,12 @@ sin_tbl = const(
         75,
         50,
         25,
-    )
+    ],
 )
 
-cos_tbl = const(
-    (
+cos_tbl = array(
+    "i",
+    [
         1024,
         1024,
         1023,
@@ -369,7 +372,7 @@ cos_tbl = const(
         -1021,
         -1023,
         -1024,
-    )
+    ],
 )
 
 # 奥行きの拡縮
