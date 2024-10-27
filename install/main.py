@@ -186,8 +186,8 @@ _REC_NUM_W = const(16)
 _REC_NUM_H = const(16)
 
 # 看板
-_READY_X = const(78)
-_READY_Y = const(76)
+_READY_X = const(77)
+_READY_Y = const(77)
 _READY_W = const(84)
 _READY_H = const(28)
 
@@ -1183,6 +1183,7 @@ class View(ThreadSprite):
         self.g_src = data[2]  # 重力発生源
         self.lap = data[3]  # ゴール範囲
 
+        collect()
         try:
             f = open(data[0], "rb")
         except:
@@ -1480,6 +1481,7 @@ class SelectCourse(SpriteContainer):
         """コースマップ"""
         data = course_datafile[num]
 
+        collect()
         try:
             f = open(data[0], "rb")
         except:

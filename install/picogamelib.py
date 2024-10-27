@@ -41,11 +41,8 @@ from utime import ticks_ms, ticks_diff
 from framebuf import FrameBuffer, RGB565
 from gc import collect
 from micropython import const
-from picolcd114 import LCD114, LCD_W
+from picolcd114 import LCD114
 from gamedata import palette565
-
-
-DEBUG = False
 
 
 # イベント
@@ -597,6 +594,7 @@ class Stage(SpriteContainer):
         """リソースの破棄"""
         self.resources["images"].clear()
         self.resources["misc"].clear()
+        collect()
 
 
 class Animator:
