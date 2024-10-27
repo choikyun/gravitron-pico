@@ -1183,7 +1183,6 @@ class View(ThreadSprite):
         self.g_src = data[2]  # 重力発生源
         self.lap = data[3]  # ゴール範囲
 
-        collect()
         try:
             f = open(data[0], "rb")
         except:
@@ -1481,7 +1480,6 @@ class SelectCourse(SpriteContainer):
         """コースマップ"""
         data = course_datafile[num]
 
-        collect()
         try:
             f = open(data[0], "rb")
         except:

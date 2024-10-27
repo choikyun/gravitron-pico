@@ -569,6 +569,7 @@ class Stage(SpriteContainer):
 
     def load_resources(self):
         """リソースのロード"""
+        collect()
         try:
             # リソースは【ステージ名.dat】
             f = open(self.name + ".dat", "rb")
@@ -596,7 +597,6 @@ class Stage(SpriteContainer):
         """リソースの破棄"""
         self.resources["images"].clear()
         self.resources["misc"].clear()
-        collect()
 
 
 class Animator:
@@ -941,7 +941,6 @@ class Director:
         Params:
             scene_name (str): シーン名
         """
-        collect()
         self.is_playing = False  # 一時停止
         s = self.__get_scene(scene_name)  # 名前でシーン取得
         if s is None:

@@ -3,106 +3,94 @@
 __version__ = "1.0.1"
 __author__ = "Choi Gyun 2024"
 
-from micropython import const
 from array import array
 
 
 # RBG565 パレット PICO-8風
-palette565 = const(
-    (
-        0x0000,
-        0x194A,
-        0x792A,
-        0x042A,
-        0xAA86,
-        0x5AA9,
-        0xC618,
-        0xFF9D,
-        0xF809,
-        0xFD00,
-        0xFF64,
-        0x0726,
-        0x2D7F,
-        0x83B3,
-        0xFBB5,
-        0xFE75,
-    )
+palette565 = (
+    0x0000,
+    0x194A,
+    0x792A,
+    0x042A,
+    0xAA86,
+    0x5AA9,
+    0xC618,
+    0xFF9D,
+    0xF809,
+    0xFD00,
+    0xFF64,
+    0x0726,
+    0x2D7F,
+    0x83B3,
+    0xFBB5,
+    0xFE75,
 )
 
 # コース用 565パレット 奥に行くほど明るくなる
-c_pal0 = const(
-    (
-        0x0000,
-        0x194A,
-        0xFF9D,
-        0xF809,
-        0xFF64,
-        0x0726,
-        0xFBB5,
-        0xFE75,
-    )
+c_pal0 = (
+    0x0000,
+    0x194A,
+    0xFF9D,
+    0xF809,
+    0xFF64,
+    0x0726,
+    0xFBB5,
+    0xFE75,
 )
-c_pal1 = const(
-    (
-        0x18E3,
-        0x3A4E,
-        0xFFFF,
-        0xF8ED,
-        0xFFE7,
-        0x0F68,
-        0xFC57,
-        0xFF17,
-    )
+
+c_pal1 = (
+    0x18E3,
+    0x3A4E,
+    0xFFFF,
+    0xF8ED,
+    0xFFE7,
+    0x0F68,
+    0xFC57,
+    0xFF17,
 )
-c_pal2 = const(
-    (
-        0x39E7,
-        0x5B31,
-        0xFFFF,
-        0xF98F,
-        0xFFE9,
-        0x17C9,
-        0xFCFA,
-        0xFFBA,
-    )
+c_pal2 = (
+    0x39E7,
+    0x5B31,
+    0xFFFF,
+    0xF98F,
+    0xFFE9,
+    0x17C9,
+    0xFCFA,
+    0xFFBA,
 )
-c_pal3 = const(
-    (
-        0x9492,
-        0x7435,
-        0xFFFF,
-        0xFA32,
-        0xFFEC,
-        0x1FEA,
-        0xFD9C,
-        0xFFFC,
-    )
+c_pal3 = (
+    0x9492,
+    0x7435,
+    0xFFFF,
+    0xFA32,
+    0xFFEC,
+    0x1FEA,
+    0xFD9C,
+    0xFFFC,
 )
 
 # コース用パレットリスト
-pal_tbl = const(
-    (
-        c_pal3,
-        c_pal3,
-        c_pal2,
-        c_pal2,
-        c_pal2,
-        c_pal1,
-        c_pal1,
-        c_pal1,
-        c_pal1,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-        c_pal0,
-    )
+pal_tbl = (
+    c_pal3,
+    c_pal3,
+    c_pal2,
+    c_pal2,
+    c_pal2,
+    c_pal1,
+    c_pal1,
+    c_pal1,
+    c_pal1,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
+    c_pal0,
 )
 
 # サイン・コサインテーブル
@@ -376,76 +364,71 @@ cos_tbl = array(
 )
 
 # 奥行きの拡縮
-z_scale_tbl = const(
-    (
-        171,
-        110,
-        79,
-        59,
-        47,
-        37,
-        30,
-        25,
-        21,
-        17,
-        14,
-        12,
-        9,
-        8,
-        6,
-        4,
-        3,
-        2,
-        1,
-        0,
-    )
+z_scale_tbl = (
+    171,
+    110,
+    79,
+    59,
+    47,
+    37,
+    30,
+    25,
+    21,
+    17,
+    14,
+    12,
+    9,
+    8,
+    6,
+    4,
+    3,
+    2,
+    1,
+    0,
 )
 
 # 水平方向の拡縮（8bit固定小数）
-h_scale_tbl = const(
-    (
-        64,
-        94,
-        125,
-        155,
-        185,
-        216,
-        246,
-        276,
-        307,
-        337,
-        367,
-        398,
-        428,
-        458,
-        489,
-        519,
-        549,
-        580,
-        610,
-        640,
-    )
+h_scale_tbl = (
+    64,
+    94,
+    125,
+    155,
+    185,
+    216,
+    246,
+    276,
+    307,
+    337,
+    367,
+    398,
+    428,
+    458,
+    489,
+    519,
+    549,
+    580,
+    610,
+    640,
 )
+
 
 # arc tan 3 * 3
 # ざっくりした方向
-atan_tbl = const(
-    (
-        -1,  # エラー
-        0,
-        0,
-        0,
-        64,
-        32,
-        19,
-        13,
-        64,
-        45,
-        32,
-        24,
-        64,
-        51,
-        40,
-        32,
-    )
+atan_tbl = (
+    -1,  # エラー
+    0,
+    0,
+    0,
+    64,
+    32,
+    19,
+    13,
+    64,
+    45,
+    32,
+    24,
+    64,
+    51,
+    40,
+    32,
 )
