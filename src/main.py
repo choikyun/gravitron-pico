@@ -466,7 +466,6 @@ class ResultsScene(Scene):
             if self.key.push & KEY_B:
                 d = self.director
                 d.pop()  # 停止 リソース破棄
-
                 d.push("title")
 
 
@@ -927,7 +926,7 @@ class View(ThreadSprite):
     def init_bg(self):
         """背景"""
         hs = (10, 8, 6, 4, 4)
-        col =(0x194A, 0x83B3, 0xFE75, 0xFF9D, 0x2D7F)
+        col = (0x194A, 0x83B3, 0xFE75, 0xFF9D, 0x2D7F)
         y = 43
         for h, c in zip(hs, col):
             lcd.rect(1, y, 237, h, c, True)

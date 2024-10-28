@@ -986,6 +986,7 @@ class Director:
         Returns:
             Sccene or None: 見つかったシーン 無ければ None
         """
+        collect()
         for s in self.scenes:
             if s[0] == scene_name:
                 clz = s[1]
