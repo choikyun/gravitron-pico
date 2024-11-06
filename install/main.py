@@ -919,6 +919,7 @@ class View(ThreadSprite):
         self.g_speed = 0  # 重力加速度
         # self.dir = 0  # 進行方向
         self.dir_angle = 0  # 進行方向角度
+        self.max_angle = _MAX_DIR_ANGLE  # 最大回転角
         self.camera_cos = 0  # 描画用 cos sin
         self.camera_sin = 0
         self.prev_pixel = 0  # 前フレームの路面
@@ -972,18 +973,53 @@ class View(ThreadSprite):
 
             # 左右移動（回転）
             if key.repeat & KEY_RIGHT and self.speed != 0:
-                self.dir_angle += _ADD_DIR_ANGLE
-                if self.dir_angle >= _MAX_DIR_ANGLE:
-                    self.dir_angle = _MAX_DIR_ANGLE
+                if key.double & KEY_RIGHT:  # クイックターン
+                    self.max_angle = _MAX_DIR_ANGLE * 10
+                    self.dir_angle = self.max_angle
+                    self.event.post(
+                        [
+                            _EV_UPDATE_POWER,
+                            EV_PRIORITY_MID,
+                            0,
+                            self,
+                            -200,
+                        ]
+                    )
+                else:
+                    self.dir_angle += _ADD_DIR_ANGLE
+                    self.max_angle = _MAX_DIR_ANGLE
+
+                if self.dir_angle >= self.max_angle:
+                    self.dir_angle = self.max_angle
+
             elif key.repeat & KEY_LEFT and self.speed != 0:
-                self.dir_angle -= _ADD_DIR_ANGLE
-                if self.dir_angle <= -_MAX_DIR_ANGLE:
-                    self.dir_angle = -_MAX_DIR_ANGLE
+                if key.double & KEY_LEFT:  # クイックターン
+                    self.max_angle = _MAX_DIR_ANGLE * 10
+                    self.dir_angle = -self.max_angle
+                    self.event.post(
+                        [
+                            _EV_UPDATE_POWER,
+                            EV_PRIORITY_MID,
+                            0,
+                            self,
+                            -200,
+                        ]
+                    )
+                else:
+                    self.dir_angle -= _ADD_DIR_ANGLE
+                    self.max_angle = _MAX_DIR_ANGLE
+
+                if self.dir_angle <= -self.max_angle:
+                    self.dir_angle = -self.max_angle
             else:
+                # クイックターン終了
+                self.max_angle = _MAX_DIR_ANGLE
+
                 if self.dir_angle > 0:
                     self.dir_angle -= _DEC_DIR_ANGLE  # 減衰
                 elif self.dir_angle < 0:
                     self.dir_angle += _DEC_DIR_ANGLE
+
             # 角度
             self.dir = (self.dir + (self.dir_angle >> _ACC_FIX)) % _MAX_RAD
 

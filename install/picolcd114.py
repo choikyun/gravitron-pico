@@ -173,6 +173,11 @@ class InputKey:
     def __init__(self):
         self.repeat = 0
         self.push = 0
+        self.frame = 0
+        self.prev_frame_l = 0
+        self.prev_frame_r = 0
+        self.prev_push = 0
+        self.double = 0 # ダブルプッシュ
 
     def scan(self):
         """キースキャン
@@ -198,3 +203,27 @@ class InputKey:
             self.repeat |= KEY_RIGHT
 
         self.push &= self.repeat
+
+        self.double = 0
+        # ダブルプッシュ判定
+        # left
+        if self.push & KEY_LEFT and self.prev_push & KEY_LEFT and (self.frame - self.prev_frame_l) < 15:
+            self.double |= KEY_LEFT
+            self.prev_push = 0 # ダブル判定でリセット
+            self.prev_frame_l = self.frame
+        elif self.push & KEY_LEFT:
+            # 判定開始
+            self.prev_frame_l = self.frame
+            self.prev_push = self.push
+        # right
+        if self.push & KEY_RIGHT and self.prev_push & KEY_RIGHT and (self.frame - self.prev_frame_r) < 15:
+            self.double |= KEY_RIGHT
+            self.prev_push = 0 # ダブル判定でリセット
+            self.prev_frame_r = self.frame
+        elif self.push & KEY_RIGHT:
+            # 判定開始
+            self.prev_frame_r = self.frame
+            self.prev_push = self.push
+
+        self.frame += 1
+
